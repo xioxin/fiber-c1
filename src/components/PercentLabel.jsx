@@ -78,7 +78,7 @@ export function PercentLabel({ progress }) {
   })
 
   return (
-    <Center position={[0, -2.05, 0]}>
+    <Center position={[0, -0, 0]}>
       <Text3D
         key={displayValue}
         ref={textRef}
