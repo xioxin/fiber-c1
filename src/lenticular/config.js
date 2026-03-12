@@ -10,8 +10,8 @@ export const AtlasWidth = ImgCountX * SubWidth
 export const AtlasHeight = ImgCountY * SubHeight
 
 export const LenticularOptics = {
-  slope: 0.09878,
-  interval: 19.6138,
-  x0: -1.951725,
+  slope: -0.2692,
+  interval: 19.6401,
+  x0: 0.10516,
   thetaDeg: 40,
 }
