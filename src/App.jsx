@@ -28,7 +28,7 @@ function Scene({ progress, renderMode }) {
       <Atmosphere />
 
       {/* Donut progress ring */}
-      <group position={[0, 0.6, 0]}>
+      <group position={[0, 0.72, 0]} scale={0.80}>
         <DonutProgress progress={progress} />
       </group>
 

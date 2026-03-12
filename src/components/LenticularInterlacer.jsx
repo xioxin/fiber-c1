@@ -118,9 +118,9 @@ export function LenticularInterlacer({ focusPoint = [0, 0, 0], mode = 'interlace
       new THREE.ShaderMaterial({
         uniforms: {
           tDiffuse: { value: atlasTarget.texture },
-          slope: { value: LenticularOptics.slope },
-          interval: { value: LenticularOptics.interval },
-          x0: { value: LenticularOptics.x0 },
+          slope: { value: LenticularOptics.obliquity },
+          interval: { value: LenticularOptics.lineNumber },
+          x0: { value: LenticularOptics.deviation },
         },
         vertexShader: fullScreenVertexShader,
         fragmentShader: buildInterlaceFragmentShader(),
