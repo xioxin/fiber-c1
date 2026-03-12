@@ -55,21 +55,30 @@ function Scene({ progress, renderMode }) {
 }
 
 function App() {
-  const [progress, setProgress] = useState(65)
+  const [progress, setProgress] = useState(0)
   const [renderMode, setRenderMode] = useState('interlaced')
+  const isElectron = typeof window !== 'undefined' && !!window.electronAPI
 
   useEffect(() => {
-    const tick = () => {
-      setProgress(Math.floor(Math.random() * 96) + 2) // 2..97
+    if (isElectron) {
+      // Get initial CPU value immediately
+      window.electronAPI.getCpuLoad().then(setProgress)
+      // Subscribe to push updates every second
+      const cleanup = window.electronAPI.onCpuLoad(setProgress)
+      return cleanup
+    } else {
+      // Fallback: random values for browser preview
+      const tick = () => {
+        setProgress(Math.floor(Math.random() * 96) + 2) // 2..97
+      }
+      const first = setTimeout(tick, 1200)
+      const interval = setInterval(tick, 3500)
+      return () => {
+        clearTimeout(first)
+        clearInterval(interval)
+      }
     }
-    // First change after a short delay, then every 3.5s
-    const first = setTimeout(tick, 1200)
-    const interval = setInterval(tick, 3500)
-    return () => {
-      clearTimeout(first)
-      clearInterval(interval)
-    }
-  }, [])
+  }, [isElectron])
 
   return (
     <div className="app-root">
