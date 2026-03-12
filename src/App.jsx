@@ -5,6 +5,8 @@ import { DonutProgress } from './components/DonutProgress'
 import { PercentLabel } from './components/PercentLabel'
 import { Atmosphere } from './components/Atmosphere'
 import { LenticularInterlacer } from './components/LenticularInterlacer'
+import { LenticularOptics } from './lenticular/config'
+
 import './App.css'
 
 const RENDER_MODES = [
@@ -38,7 +40,14 @@ function Scene({ progress, renderMode }) {
       </Suspense>
 
       {/* Render 40 views and interlace into the final on-screen image */}
-      <LenticularInterlacer focusPoint={[0, 0, 0]} mode={renderMode} />
+      <LenticularInterlacer
+        focusPoint={[0, 0, 0]}
+        mode={renderMode}
+        obliquity={LenticularOptics.obliquity}
+        lineNumber={LenticularOptics.lineNumber}
+        deviation={LenticularOptics.deviation}
+        thetaDeg={LenticularOptics.thetaDeg}
+      />
 
       <OrbitControls enableZoom={false} enablePan={false} />
     </>

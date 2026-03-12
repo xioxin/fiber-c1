@@ -11,7 +11,6 @@ import {
   ViewCount,
   AtlasWidth,
   AtlasHeight,
-  LenticularOptics,
 } from '../lenticular/config'
 
 function toFloatString(value) {
@@ -91,7 +90,14 @@ const tempTarget = new THREE.Vector3()
 const tempOffset = new THREE.Vector3()
 const tempRotatedOffset = new THREE.Vector3()
 
-export function LenticularInterlacer({ focusPoint = [0, 0, 0], mode = 'interlaced' }) {
+export function LenticularInterlacer({ 
+    focusPoint = [0, 0, 0], 
+    mode = 'interlaced',
+    obliquity = 0.10516,
+    lineNumber = 19.6401,
+    deviation = 16.25578,
+    thetaDeg = 40.0,
+ }) {
   const { gl, size, scene } = useThree()
 
   const viewCameras = useMemo(
@@ -118,9 +124,9 @@ export function LenticularInterlacer({ focusPoint = [0, 0, 0], mode = 'interlace
       new THREE.ShaderMaterial({
         uniforms: {
           tDiffuse: { value: atlasTarget.texture },
-          slope: { value: LenticularOptics.obliquity },
-          interval: { value: LenticularOptics.lineNumber },
-          x0: { value: LenticularOptics.deviation },
+          slope: { value: obliquity },
+          interval: { value: lineNumber },
+          x0: { value: deviation },
         },
         vertexShader: fullScreenVertexShader,
         fragmentShader: buildInterlaceFragmentShader(),
@@ -178,7 +184,7 @@ export function LenticularInterlacer({ focusPoint = [0, 0, 0], mode = 'interlace
       tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2])
       tempOffset.copy(mainCamera.position).sub(tempTarget)
 
-      const thetaRad = THREE.MathUtils.degToRad(LenticularOptics.thetaDeg)
+      const thetaRad = THREE.MathUtils.degToRad(thetaDeg)
       const half = 0.5
 
       for (let i = 0; i < ViewCount; i += 1) {
