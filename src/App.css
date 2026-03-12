@@ -1,0 +1,60 @@
+
+.app-root {
+	position: relative;
+	width: 100vw;
+	height: 100vh;
+}
+
+.debug-switcher {
+	position: absolute;
+	top: 14px;
+	left: 14px;
+	z-index: 10;
+	display: flex;
+	gap: 8px;
+	padding: 8px;
+	border-radius: 12px;
+	background: rgba(6, 8, 20, 0.72);
+	border: 1px solid rgba(140, 170, 255, 0.35);
+	backdrop-filter: blur(8px);
+}
+
+.debug-btn {
+	border: 1px solid rgba(120, 140, 220, 0.55);
+	border-radius: 8px;
+	background: rgba(14, 20, 45, 0.78);
+	color: #c8d4ff;
+	font-size: 13px;
+	line-height: 1;
+	padding: 10px 12px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.debug-btn:hover {
+	border-color: rgba(160, 186, 255, 0.9);
+	color: #e5ecff;
+	background: rgba(24, 35, 72, 0.9);
+}
+
+.debug-btn.active {
+	border-color: rgba(120, 243, 255, 0.95);
+	color: #04111f;
+	background: linear-gradient(135deg, #89f6ff 0%, #83afff 100%);
+	font-weight: 700;
+}
+
+@media (max-width: 900px) {
+	.debug-switcher {
+		top: 10px;
+		left: 10px;
+		right: 10px;
+		flex-wrap: wrap;
+	}
+
+	.debug-btn {
+		flex: 1;
+		min-width: 120px;
+	}
+}
+
