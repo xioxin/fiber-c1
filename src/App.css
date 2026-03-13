@@ -65,19 +65,6 @@ box-shadow: 0 0 6px 2px rgba(0, 255, 136, 0.6);
 background-color: #444;
 }
 
-/* Unit overlay (shown when displaying temperature instead of percentage) */
-.unit-overlay {
-position: absolute;
-bottom: 14px;
-left: 50%;
-transform: translateX(-50%);
-z-index: 10;
-font-size: 13px;
-color: rgba(200, 212, 255, 0.5);
-font-family: 'Courier New', monospace;
-pointer-events: none;
-}
-
 @media (max-width: 900px) {
 .debug-switcher {
 top: 10px;

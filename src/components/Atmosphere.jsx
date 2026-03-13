@@ -1,6 +1,6 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Stars } from '@react-three/drei'
+import * as THREE from 'three'
 import { ORB_LIGHTS } from './orbLightingConfig'
 
 // Tiny floating orb for ambient atmosphere
@@ -35,20 +35,27 @@ function FloatOrb({ position, color, speed, radius, lightIntensity, lightDistanc
   )
 }
 
-export function Atmosphere() {
+/** Sample N evenly-spaced colors from a linear gradient between two hex colors. */
+function sampleGradient(primaryColor, secondaryColor, count) {
+  const c1 = new THREE.Color(primaryColor)
+  const c2 = new THREE.Color(secondaryColor)
+  return Array.from({ length: count }, (_, i) => {
+    const t = count > 1 ? i / (count - 1) : 0
+    return '#' + c1.clone().lerp(c2, t).getHexString()
+  })
+}
+
+export function Atmosphere({ primaryColor = '#00e5ff', secondaryColor = '#b020ff' }) {
+  // Recompute gradient colors only when theme colors change
+  const orbColors = useMemo(
+    () => sampleGradient(primaryColor, secondaryColor, ORB_LIGHTS.length),
+    [primaryColor, secondaryColor],
+  )
+
   return (
     <>
-      {/* <Stars
-        radius={60}
-        depth={60}
-        count={2500}
-        factor={2.5}
-        saturation={0.8}
-        fade
-        speed={0.5}
-      /> */}
       {ORB_LIGHTS.map((o, i) => (
-        <FloatOrb key={i} {...o} />
+        <FloatOrb key={i} {...o} color={orbColors[i]} />
       ))}
     </>
   )

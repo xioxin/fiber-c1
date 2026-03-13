@@ -25,7 +25,7 @@ function resolveThemeColors(theme) {
   }
 }
 
-function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryColor }) {
+function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryColor, unit }) {
   return (
     <>
       <color attach="background" args={["#05050f"]} />
@@ -37,7 +37,7 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
       <directionalLight position={[0, 10, 5]} intensity={0.4} color="#ffffff" />
       <pointLight position={[0, 0, 8]} color="#ffffff" intensity={0.6} />
 
-      <Atmosphere />
+      <Atmosphere primaryColor={primaryColor} secondaryColor={secondaryColor} />
 
       {/* Donut progress ring */}
       <group position={[0, 0, 0]} scale={0.8}>
@@ -55,6 +55,7 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
             progress={progress}
             primaryColor={primaryColor}
             secondaryColor={secondaryColor}
+            unit={unit}
           />
         </Suspense>
       </group>
@@ -180,13 +181,9 @@ function App() {
           gratingParams={gratingParams}
           primaryColor={themeColors.primary}
           secondaryColor={themeColors.secondary}
+          unit={displayUnit}
         />
       </Canvas>
-
-      {/* Unit label overlay (for temperature display) */}
-      {displayUnit !== '%' && (
-        <div className="unit-overlay">{displayUnit}</div>
-      )}
     </div>
   );
 }

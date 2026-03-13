@@ -14,6 +14,11 @@ const TILT_SWAY_AMOUNT = 0.06
 const TILT_SWAY_SPEED = 0.7
 const ORB_COUNT = ORB_LIGHTS.length
 
+// Module-level temp Color objects used to compute gradient orb colors each
+// frame without allocating new objects (allocation-free gradient sampling).
+const _tmpGradA = new THREE.Color()
+const _tmpGradB = new THREE.Color()
+
 /** Full-circle curve starting at 12 o'clock, going clockwise. */
 class FullCircle extends THREE.Curve {
   constructor(r) { super(); this._r = r }
@@ -210,6 +215,15 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
     startCapUniforms.colorB.value.set(secondaryColorRef.current)
     endCapUniforms.colorA.value.set(primaryColorRef.current)
     endCapUniforms.colorB.value.set(secondaryColorRef.current)
+
+    // Update orb lighting colors to match theme gradient
+    _tmpGradA.set(primaryColorRef.current)
+    _tmpGradB.set(secondaryColorRef.current)
+    const orbColors = orbUniforms.orbColor.value
+    for (let i = 0; i < ORB_COUNT; i++) {
+      const t = ORB_COUNT > 1 ? i / (ORB_COUNT - 1) : 0
+      orbColors[i].copy(_tmpGradA).lerp(_tmpGradB, t)
+    }
 
     // Only update drawRange — no geometry rebuild, no flickering, no gaps
     geometry.setDrawRange(0, Math.ceil(PATH_SEGS * next) * RADIAL_SEGS * 6)

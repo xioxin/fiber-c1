@@ -361,27 +361,35 @@ let latestMetrics = {
 
 async function pollSystemMetrics() {
   try {
-    const [load, temp, mem, graphics] = await Promise.all([
-      si.currentLoad(),
-      si.cpuTemperature(),
-      si.mem(),
-      si.graphics(),
-    ])
+    const cfg = getConfig()
+    const info = cfg.displayInfo || 'cpu_usage'
 
-    latestMetrics.cpuLoad = Math.round(load.currentLoad)
-    latestMetrics.cpuTemp = Math.round(temp.main || 0)
-    latestMetrics.memUsage = Math.round((mem.used / mem.total) * 100)
+    // Only query the API that is actually required for the current display type.
+    // si.graphics() in particular is very expensive on Windows (WMI) — never
+    // call it unless the user has selected a GPU metric.
+    if (info === 'cpu_usage') {
+      const load = await si.currentLoad()
+      latestMetrics.cpuLoad = Math.round(load.currentLoad)
+    } else if (info === 'cpu_temp') {
+      const temp = await si.cpuTemperature()
+      latestMetrics.cpuTemp = Math.round(temp.main || 0)
+    } else if (info === 'mem_usage') {
+      const mem = await si.mem()
+      latestMetrics.memUsage = Math.round((mem.used / mem.total) * 100)
+    } else {
+      // gpu_usage | vram_usage | gpu_temp
+      const graphics = await si.graphics()
+      const gpu = graphics.controllers?.find(
+        (c) => c.utilizationGpu !== undefined && c.utilizationGpu !== null,
+      ) || graphics.controllers?.[0]
 
-    const gpu = graphics.controllers?.find(
-      (c) => c.utilizationGpu !== undefined && c.utilizationGpu !== null,
-    ) || graphics.controllers?.[0]
-
-    if (gpu) {
-      latestMetrics.gpuLoad = Math.round(gpu.utilizationGpu || 0)
-      latestMetrics.gpuTemp = Math.round(gpu.temperatureGpu || 0)
-      const vramTotal = gpu.vram || 0
-      const vramUsed = gpu.memoryUsed || 0
-      latestMetrics.vramUsage = vramTotal > 0 ? Math.round((vramUsed / vramTotal) * 100) : 0
+      if (gpu) {
+        latestMetrics.gpuLoad = Math.round(gpu.utilizationGpu || 0)
+        latestMetrics.gpuTemp = Math.round(gpu.temperatureGpu || 0)
+        const vramTotal = gpu.vram || 0
+        const vramUsed = gpu.memoryUsed || 0
+        latestMetrics.vramUsage = vramTotal > 0 ? Math.round((vramUsed / vramTotal) * 100) : 0
+      }
     }
 
     broadcastMetrics()
@@ -390,7 +398,7 @@ async function pollSystemMetrics() {
   }
 }
 
-const DISPLAY_INFO_METRIC_MAP = {
+const DISPLAY_INFO_VALUE_GETTERS = {
   cpu_usage:  () => latestMetrics.cpuLoad,
   cpu_temp:   () => latestMetrics.cpuTemp,
   mem_usage:  () => latestMetrics.memUsage,
@@ -402,7 +410,7 @@ const DISPLAY_INFO_METRIC_MAP = {
 function broadcastMetrics() {
   const cfg = getConfig()
   const info = cfg.displayInfo || 'cpu_usage'
-  const getMetric = DISPLAY_INFO_METRIC_MAP[info] ?? DISPLAY_INFO_METRIC_MAP.cpu_usage
+  const getMetric = DISPLAY_INFO_VALUE_GETTERS[info] ?? DISPLAY_INFO_VALUE_GETTERS.cpu_usage
   const value = getMetric()
 
   ;[viewerWindow].forEach((win) => {
