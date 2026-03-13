@@ -9,6 +9,7 @@ import { LenticularOptics } from "./lenticular/config";
 import { SettingsPanel } from "./SettingsPanel";
 import { getUnit } from "./i18n/index.js";
 import { PRESET_COLORS } from "./i18n/index.js";
+import { api, isTauri, getCurrentWindowLabel } from "./api.js";
 
 import "./App.css";
 
@@ -96,7 +97,11 @@ function App() {
   });
 
   const isElectron = typeof window !== "undefined" && !!window.electronAPI;
-  const isSettings = typeof window !== "undefined" && window.location.hash === '#settings';
+  // In Tauri, detect the settings window by its label; also support hash routing
+  // for plain-browser preview.
+  const windowLabel = getCurrentWindowLabel()
+  const isSettings = windowLabel === 'settings'
+    || (typeof window !== "undefined" && window.location.hash === '#settings');
 
   const themeColors = resolveThemeColors(settings.theme);
 
@@ -121,22 +126,24 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isElectron) {
+    if (isTauri || isElectron) {
+      const appApi = isTauri ? api : window.electronAPI;
+
       // Load saved settings
-      window.electronAPI.getSettings().then(applySettings);
+      appApi.getSettings().then(applySettings);
 
       // Subscribe to settings updates (e.g. from settings window)
-      const cleanupSettings = window.electronAPI.onSettingsUpdated(applySettings);
+      const cleanupSettings = appApi.onSettingsUpdated(applySettings);
 
       if (!isSettings) {
         // Only poll system metrics in the viewer window
-        window.electronAPI.getCpuLoad().then(setProgress);
-        const cleanupCpu = window.electronAPI.onCpuLoad(setProgress);
+        appApi.getCpuLoad().then(setProgress);
+        const cleanupCpu = appApi.onCpuLoad(setProgress);
 
-        window.electronAPI.getGratingParams().then((params) => {
+        appApi.getGratingParams().then((params) => {
           if (params) setGratingParams(params);
         });
-        const cleanupGrating = window.electronAPI.onGratingParams((params) => {
+        const cleanupGrating = appApi.onGratingParams((params) => {
           if (params) setGratingParams(params);
         });
 
@@ -162,7 +169,7 @@ function App() {
         clearInterval(interval);
       };
     }
-  }, [isElectron, isSettings, applySettings]);
+  }, [isTauri, isElectron, isSettings, applySettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Settings window
   if (isSettings) {

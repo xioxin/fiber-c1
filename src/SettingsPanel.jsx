@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { PRESET_COLORS, t } from './i18n/index.js'
+import { api, isTauri } from './api.js'
 import './SettingsPanel.css'
 
 const DISPLAY_INFO_TYPES = [
@@ -26,15 +27,16 @@ export function SettingsPanel() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [saving, setSaving] = useState(false)
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
+  const nativeApi = isTauri ? api : (isElectron ? window.electronAPI : null)
 
   // Load settings on mount
   useEffect(() => {
-    if (isElectron) {
-      window.electronAPI.getSettings().then((s) => {
+    if (nativeApi) {
+      nativeApi.getSettings().then((s) => {
         if (s) setSettings(s)
       })
     }
-  }, [isElectron])
+  }, [nativeApi])
 
   const lang = settings.language || 'zh'
 
@@ -42,21 +44,21 @@ export function SettingsPanel() {
     async (patch) => {
       const merged = deepMerge(settings, patch)
       setSettings(merged)
-      if (isElectron) {
+      if (nativeApi) {
         setSaving(true)
         try {
-          await window.electronAPI.setSettings(patch)
+          await nativeApi.setSettings(patch)
         } finally {
           setSaving(false)
         }
       }
     },
-    [settings, isElectron],
+    [settings, nativeApi],
   )
 
   const handleThemeModeChange = async (mode) => {
-    if (mode === 'system' && isElectron) {
-      const accent = await window.electronAPI.getSystemAccentColor()
+    if (mode === 'system' && nativeApi) {
+      const accent = await nativeApi.getSystemAccentColor()
       if (accent) {
         const secondary = darkenAndShift(accent)
         updateSettings({ theme: { mode, primaryColor: accent, secondaryColor: secondary } })
@@ -79,8 +81,8 @@ export function SettingsPanel() {
   }
 
   const handleClose = () => {
-    if (isElectron) {
-      window.electronAPI.closeSettings()
+    if (nativeApi) {
+      nativeApi.closeSettings()
     }
   }
 
