@@ -10,9 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-dist-electron
-release
 *.local
+
+# Tauri build artefacts
+src-tauri/target
+src-tauri/gen
 
 # Editor directories and files
 .vscode/*
