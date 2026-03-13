@@ -21,7 +21,8 @@ fn pipe_path(name: &str) -> String {
 }
 
 fn send_request(stream: &mut dyn Write, request_type: &str) -> std::io::Result<()> {
-    // NOTE: "getDeivice" (misspelling) is intentional — it matches the platform protocol.
+    // NOTE: "getDeivice" (misspelling) is intentional — it must match the exact token used
+    // by the Cubestage/OpenstageAI platform protocol and cannot be corrected.
     let json = format!("{}{}\"}}", APP_REQUEST, request_type);
     stream.write_all(json.as_bytes())?;
     stream.flush()
@@ -49,7 +50,8 @@ fn parse_response(
                 .unwrap_or("")
                 .to_string();
             let rd = response.get("response_data").cloned().unwrap_or(Value::Null);
-            // NOTE: "getDeivice" (misspelling) — exact protocol token
+            // NOTE: "getDeivice" is the exact misspelled protocol token used by
+            // Cubestage/OpenstageAI and must be preserved for wire compatibility.
             if rt == "getDeivice" {
                 let inner_type = rd
                     .get("type")

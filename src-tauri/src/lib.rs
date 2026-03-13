@@ -14,6 +14,10 @@ use tauri::{
     AppHandle, Emitter, Manager, State,
 };
 
+/// Milliseconds to wait after tray/state setup before creating the viewer window.
+/// Ensures the managed `AppState` is fully registered before the window is shown.
+const VIEWER_INIT_DELAY_MS: u64 = 300;
+
 // ---------------------------------------------------------------------------
 // Shared application state
 // ---------------------------------------------------------------------------
@@ -182,8 +186,7 @@ async fn poll_metrics(app: &AppHandle, collector: &mut MetricsCollector) {
             let v = collector.refresh_mem_usage();
             state.latest_metrics.lock().unwrap().mem_usage = v;
         }
-        _ => {
-            // gpu_usage | vram_usage | gpu_temp
+        "gpu_usage" | "vram_usage" | "gpu_temp" => {
             let ok = state.nvidia_smi_ok.lock().unwrap().unwrap_or(true);
             if ok {
                 match get_gpu_metrics_via_nvidia_smi() {
@@ -199,6 +202,9 @@ async fn poll_metrics(app: &AppHandle, collector: &mut MetricsCollector) {
                     }
                 }
             }
+        }
+        unknown => {
+            eprintln!("[metrics] Unknown displayInfo value '{unknown}', skipping poll");
         }
     }
 
@@ -394,9 +400,10 @@ pub fn run() {
             // ---- Viewer window on the C1 display ----
             {
                 let app_handle2 = app.handle().clone();
-                // Delay slightly so the tray/state is fully initialised
+                // Brief delay to ensure managed AppState is fully registered
+                // before the window tries to read it.
                 std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_millis(300));
+                    std::thread::sleep(Duration::from_millis(VIEWER_INIT_DELAY_MS));
                     create_viewer_window(&app_handle2);
                 });
             }

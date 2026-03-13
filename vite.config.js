@@ -23,7 +23,8 @@ export default defineConfig({
         }
       : undefined,
     watch: {
-      // Watch the Rust source files so Vite can reload when they change
+/// Watch the Rust source files so Vite can reload when they change.
+      /// Tauri handles its own rebuild; Vite should not re-trigger on Rust changes.
       ignored: ['**/src-tauri/**'],
     },
   },
