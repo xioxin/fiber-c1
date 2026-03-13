@@ -117,6 +117,7 @@ const textFragmentShader = lightingGLSL + /* glsl */ `
 export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColor = '#b020ff', unit = '%' }) {
   const [displayValue, setDisplayValue] = useState(progress)
   const [displayUnit, setDisplayUnit] = useState(unit)
+  const fontUrl = `${import.meta.env.BASE_URL}fonts/helvetiker_bold.typeface.json`
   const textRef = useRef()
   const animRef = useRef({ current: progress, target: progress })
   const displayRef = useRef(progress)
@@ -194,7 +195,7 @@ export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColo
       <Text3D
         key={`${displayValue}${displayUnit}`}
         ref={textRef}
-        font="/fonts/helvetiker_bold.typeface.json"
+        font={fontUrl}
         size={0.58}
         height={0.16}
         curveSegments={12}
