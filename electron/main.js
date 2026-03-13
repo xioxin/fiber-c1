@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import net from 'net'
 import si from 'systeminformation'
+import { getCpuTemperature, getGpuMetrics } from './metrics.js'
 import { load as loadConfig, save as saveConfig } from './store.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -349,6 +350,7 @@ function rebuildTrayMenu() {
 // ---------------------------------------------------------------------------
 
 let cpuPollInterval = null
+let pollInProgress = false
 
 let latestMetrics = {
   cpuLoad: 0,
@@ -360,41 +362,39 @@ let latestMetrics = {
 }
 
 async function pollSystemMetrics() {
+  // Prevent stacking: skip if the previous poll has not finished yet
+  if (pollInProgress) return
+  pollInProgress = true
   try {
     const cfg = getConfig()
     const info = cfg.displayInfo || 'cpu_usage'
 
-    // Only query the API that is actually required for the current display type.
-    // si.graphics() in particular is very expensive on Windows (WMI) — never
-    // call it unless the user has selected a GPU metric.
     if (info === 'cpu_usage') {
       const load = await si.currentLoad()
       latestMetrics.cpuLoad = Math.round(load.currentLoad)
     } else if (info === 'cpu_temp') {
-      const temp = await si.cpuTemperature()
-      latestMetrics.cpuTemp = Math.round(temp.main || 0)
+      // node-wmi queries Win32_PerfFormattedData_Counters_ThermalZoneInformation
+      // (si.cpuTemperature() returns 0 on most Windows machines without
+      // third-party sensor software installed)
+      latestMetrics.cpuTemp = await getCpuTemperature()
     } else if (info === 'mem_usage') {
       const mem = await si.mem()
       latestMetrics.memUsage = Math.round((mem.used / mem.total) * 100)
     } else {
       // gpu_usage | vram_usage | gpu_temp
-      const graphics = await si.graphics()
-      const gpu = graphics.controllers?.find(
-        (c) => c.utilizationGpu !== undefined && c.utilizationGpu !== null,
-      ) || graphics.controllers?.[0]
-
-      if (gpu) {
-        latestMetrics.gpuLoad = Math.round(gpu.utilizationGpu || 0)
-        latestMetrics.gpuTemp = Math.round(gpu.temperatureGpu || 0)
-        const vramTotal = gpu.vram || 0
-        const vramUsed = gpu.memoryUsed || 0
-        latestMetrics.vramUsage = vramTotal > 0 ? Math.round((vramUsed / vramTotal) * 100) : 0
-      }
+      // node-nvidia-smi calls nvidia-smi directly (much cheaper than si.graphics()
+      // which issues expensive WMI queries on Windows)
+      const gpu = await getGpuMetrics()
+      latestMetrics.gpuLoad   = gpu.gpuLoad
+      latestMetrics.gpuTemp   = gpu.gpuTemp
+      latestMetrics.vramUsage = gpu.vramUsage
     }
 
     broadcastMetrics()
   } catch {
     // ignore transient errors
+  } finally {
+    pollInProgress = false
   }
 }
 
