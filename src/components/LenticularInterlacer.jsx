@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
-import * as THREE from 'three'
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import * as THREE from "three";
 import {
   ImgCountX,
   ImgCountY,
@@ -11,10 +11,10 @@ import {
   ViewCount,
   AtlasWidth,
   AtlasHeight,
-} from '../lenticular/config'
+} from "../lenticular/config";
 
 function toFloatString(value) {
-  return Number.isInteger(value) ? `${value}.0` : `${value}`
+  return Number.isInteger(value) ? `${value}.0` : `${value}`;
 }
 
 function buildInterlaceFragmentShader() {
@@ -63,7 +63,7 @@ function buildInterlaceFragmentShader() {
       color.b = get_color(2.0).b;
       gl_FragColor = vec4(color.rgb, 1.0);
     }
-  `
+  `;
 }
 
 function buildAtlasPreviewFragmentShader() {
@@ -75,7 +75,7 @@ function buildAtlasPreviewFragmentShader() {
       // Keep native atlas orientation from render target
       gl_FragColor = texture2D(tDiffuse, vUV);
     }
-  `
+  `;
 }
 
 const fullScreenVertexShader = /* glsl */ `
@@ -84,40 +84,47 @@ const fullScreenVertexShader = /* glsl */ `
     vUV = uv;
     gl_Position = vec4(position.xy, 0.0, 1.0);
   }
-`
+`;
 
-const tempTarget = new THREE.Vector3()
-const tempOffset = new THREE.Vector3()
-const tempRotatedOffset = new THREE.Vector3()
+const tempTarget = new THREE.Vector3();
+const tempOffset = new THREE.Vector3();
+const tempRotatedOffset = new THREE.Vector3();
 
-export function LenticularInterlacer({ 
-    focusPoint = [0, 0, 0], 
-    interlaced = true,
-    obliquity = 0.10516,
-    lineNumber = 19.6401,
-    deviation = 16.25578,
-    thetaDeg = 40.0,
- }) {
-  const { gl, size, scene } = useThree()
+export function LenticularInterlacer({
+  focusPoint = [0, 0, 0],
+  interlaced = true,
+  obliquity = 0.10516,
+  lineNumber = 19.6401,
+  deviation = 16.25578,
+  thetaDeg = 40.0,
+}) {
+  const { gl, size, scene } = useThree();
 
-  const viewCameras = useMemo(
-    () => Array.from({ length: ViewCount }, () => new THREE.PerspectiveCamera(45, SubWidth / SubHeight, 0.1, 100)),
-    [],
-  )
+  const viewCamerasRef = useRef(null);
+  if (viewCamerasRef.current === null) {
+    viewCamerasRef.current = Array.from(
+      { length: ViewCount },
+      () => new THREE.PerspectiveCamera(45, SubWidth / SubHeight, 0.1, 100),
+    );
+  }
 
   const atlasTarget = useMemo(() => {
     const target = new THREE.WebGLRenderTarget(AtlasWidth, AtlasHeight, {
       depthBuffer: true,
       stencilBuffer: false,
-    })
-    target.texture.generateMipmaps = false
-    target.texture.minFilter = THREE.LinearFilter
-    target.texture.magFilter = THREE.LinearFilter
-    return target
-  }, [])
+    });
+    target.texture.generateMipmaps = false;
+    target.texture.minFilter = THREE.LinearFilter;
+    target.texture.magFilter = THREE.LinearFilter;
+    return target;
+  }, []);
 
-  const postScene = useMemo(() => new THREE.Scene(), [])
-  const postCamera = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), [])
+  const interlaceScene = useMemo(() => new THREE.Scene(), []);
+  const previewScene = useMemo(() => new THREE.Scene(), []);
+  const postCamera = useMemo(
+    () => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1),
+    [],
+  );
 
   const interlaceMaterial = useMemo(
     () =>
@@ -134,8 +141,8 @@ export function LenticularInterlacer({
         depthWrite: false,
         toneMapped: false,
       }),
-    [atlasTarget.texture],
-  )
+    [atlasTarget.texture, obliquity, lineNumber, deviation],
+  );
 
   const atlasPreviewMaterial = useMemo(
     () =>
@@ -150,91 +157,100 @@ export function LenticularInterlacer({
         toneMapped: false,
       }),
     [atlasTarget.texture],
-  )
+  );
 
-  const fullScreenQuad = useMemo(() => {
-    const geometry = new THREE.PlaneGeometry(2, 2)
-    return new THREE.Mesh(geometry, interlaceMaterial)
-  }, [interlaceMaterial])
+  const interlaceQuad = useMemo(() => {
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    return new THREE.Mesh(geometry, interlaceMaterial);
+  }, [interlaceMaterial]);
+
+  const previewQuad = useMemo(() => {
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    return new THREE.Mesh(geometry, atlasPreviewMaterial);
+  }, [atlasPreviewMaterial]);
 
   useEffect(() => {
-    postScene.add(fullScreenQuad)
+    interlaceScene.add(interlaceQuad);
+    previewScene.add(previewQuad);
     return () => {
-      postScene.remove(fullScreenQuad)
-      fullScreenQuad.geometry.dispose()
-      interlaceMaterial.dispose()
-      atlasPreviewMaterial.dispose()
-      atlasTarget.dispose()
-    }
-  }, [atlasPreviewMaterial, atlasTarget, fullScreenQuad, interlaceMaterial, postScene])
+      interlaceScene.remove(interlaceQuad);
+      previewScene.remove(previewQuad);
+      interlaceQuad.geometry.dispose();
+      previewQuad.geometry.dispose();
+      interlaceMaterial.dispose();
+      atlasPreviewMaterial.dispose();
+      atlasTarget.dispose();
+    };
+  }, [
+    atlasPreviewMaterial,
+    atlasTarget,
+    interlaceMaterial,
+    interlaceQuad,
+    interlaceScene,
+    previewQuad,
+    previewScene,
+  ]);
 
   useFrame((state) => {
-    const mainCamera = state.camera
-    if (!mainCamera || !mainCamera.isPerspectiveCamera) return
+    const mainCamera = state.camera;
+    if (!mainCamera || !mainCamera.isPerspectiveCamera) return;
 
-    const prevTarget = gl.getRenderTarget()
-    const prevAutoClear = gl.autoClear
-    const prevScissorTest = gl.getScissorTest()
-    const prevXR = gl.xr.enabled
+    const viewCameras = viewCamerasRef.current;
+    const prevTarget = gl.getRenderTarget();
+    const prevScissorTest = gl.getScissorTest();
 
-    gl.xr.enabled = false
-    gl.autoClear = true
+    tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2]);
+    tempOffset.copy(mainCamera.position).sub(tempTarget);
 
-   tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2])
-      tempOffset.copy(mainCamera.position).sub(tempTarget)
+    const thetaRad = THREE.MathUtils.degToRad(thetaDeg);
+    const half = 0.5;
 
-      const thetaRad = THREE.MathUtils.degToRad(thetaDeg)
-      const half = 0.5
+    for (let i = 0; i < ViewCount; i += 1) {
+      const cam = viewCameras[i];
+      const t = ViewCount <= 1 ? 0 : i / (ViewCount - 1);
+      const yaw = (t - half) * thetaRad;
 
-      for (let i = 0; i < ViewCount; i += 1) {
-        const cam = viewCameras[i]
-        const t = ViewCount <= 1 ? 0 : i / (ViewCount - 1)
-        const yaw = (t - half) * thetaRad
+      tempRotatedOffset.copy(tempOffset).applyAxisAngle(mainCamera.up, yaw);
 
-        tempRotatedOffset.copy(tempOffset).applyAxisAngle(mainCamera.up, yaw)
+      cam.position.copy(tempTarget).add(tempRotatedOffset);
+      cam.up.copy(mainCamera.up);
+      cam.fov = mainCamera.fov;
+      cam.near = mainCamera.near;
+      cam.far = mainCamera.far;
+      cam.zoom = mainCamera.zoom;
+      cam.aspect = SubWidth / SubHeight;
+      cam.lookAt(tempTarget);
+      cam.updateProjectionMatrix();
+      cam.updateMatrixWorld();
+    }
 
-        cam.position.copy(tempTarget).add(tempRotatedOffset)
-        cam.up.copy(mainCamera.up)
-        cam.fov = mainCamera.fov
-        cam.near = mainCamera.near
-        cam.far = mainCamera.far
-        cam.zoom = mainCamera.zoom
-        cam.aspect = SubWidth / SubHeight
-        cam.lookAt(tempTarget)
-        cam.updateProjectionMatrix()
-        cam.updateMatrixWorld()
-      }
+    gl.setRenderTarget(atlasTarget);
+    gl.setScissorTest(true);
+    gl.clear(true, true, true);
 
-      gl.setRenderTarget(atlasTarget)
-      gl.setScissorTest(true)
-      gl.clear(true, true, true)
+    for (let i = 0; i < ViewCount; i += 1) {
+      const col = i % ImgCountX;
+      const row = ImgCountY - 1 - Math.floor(i / ImgCountX);
 
-      for (let i = 0; i < ViewCount; i += 1) {
-        const col = i % ImgCountX
-        const row = ImgCountY - 1 - Math.floor(i / ImgCountX)
+      const vx = col * SubWidth;
+      const vy = row * SubHeight;
 
-        const vx = col * SubWidth
-        const vy = row * SubHeight
+      gl.setViewport(vx, vy, SubWidth, SubHeight);
+      gl.setScissor(vx, vy, SubWidth, SubHeight);
+      gl.render(scene, viewCameras[i]);
+    }
 
-        gl.setViewport(vx, vy, SubWidth, SubHeight)
-        gl.setScissor(vx, vy, SubWidth, SubHeight)
-        gl.render(scene, viewCameras[i])
-      }
+    gl.setScissorTest(false);
 
-      gl.setScissorTest(false)
+    gl.setRenderTarget(null);
+    gl.setViewport(0, 0, size.width, size.height);
+    gl.clear(true, true, true);
 
-    gl.setRenderTarget(null)
-    gl.setViewport(0, 0, size.width, size.height)
-    gl.clear(true, true, true)
+    gl.render(interlaced ? interlaceScene : previewScene, postCamera);
 
-    fullScreenQuad.material = interlaced ? interlaceMaterial : atlasPreviewMaterial
-    gl.render(postScene, postCamera)
+    gl.setRenderTarget(prevTarget);
+    gl.setScissorTest(prevScissorTest);
+  }, 1);
 
-    gl.setRenderTarget(prevTarget)
-    gl.setScissorTest(prevScissorTest)
-    gl.autoClear = prevAutoClear
-    gl.xr.enabled = prevXR
-  }, 1)
-
-  return null
+  return null;
 }
