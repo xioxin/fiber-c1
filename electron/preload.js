@@ -10,13 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCpuLoad: () => ipcRenderer.invoke('get-cpu-load'),
 
   // ---- Grating parameters (from Cubestage / OpenstageAI platform) ----
-  // Returns a Promise<{ deviation, lineNumber, obliquity }> with the current
-  // grating parameters, or the built-in defaults if the platform is offline.
   getGratingParams: () => ipcRenderer.invoke('get-grating-params'),
-
-  // Subscribe to live grating-parameter updates pushed from the platform.
-  // callback receives { deviation, lineNumber, obliquity }.
-  // Returns a cleanup function to unsubscribe.
   onGratingParams: (callback) => {
     const handler = (_event, params) => callback(params)
     ipcRenderer.on('grating-params', handler)
@@ -24,15 +18,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // ---- C1 display (grating screen) connection status ----
-  // Returns a Promise<{ connected: boolean }>.
   getDisplayStatus: () => ipcRenderer.invoke('get-display-status'),
-
-  // Subscribe to C1 connect / disconnect events.
-  // callback receives { connected: boolean, displayId: number }.
-  // Returns a cleanup function to unsubscribe.
   onDisplayStatus: (callback) => {
     const handler = (_event, status) => callback(status)
     ipcRenderer.on('display-status', handler)
     return () => ipcRenderer.removeListener('display-status', handler)
   },
+
+  // ---- Settings ----
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  setSettings: (partial) => ipcRenderer.invoke('set-settings', partial),
+  onSettingsUpdated: (callback) => {
+    const handler = (_event, settings) => callback(settings)
+    ipcRenderer.on('settings-updated', handler)
+    return () => ipcRenderer.removeListener('settings-updated', handler)
+  },
+  closeSettings: () => ipcRenderer.invoke('close-settings'),
+
+  // ---- System accent color (for "follow system" theme) ----
+  getSystemAccentColor: () => ipcRenderer.invoke('get-system-accent-color'),
+
+  // ---- Extended system metrics ----
+  getSystemMetrics: () => ipcRenderer.invoke('get-system-metrics'),
 })

@@ -6,6 +6,10 @@ import { ORB_LIGHTS } from './orbLightingConfig'
 
 const ORB_COUNT = ORB_LIGHTS.length
 
+// Module-level temp Color objects for allocation-free gradient sampling.
+const _tmpGradA = new THREE.Color()
+const _tmpGradB = new THREE.Color()
+
 const lightingGLSL = /* glsl */ `
   uniform vec3  orbBasePos[${ORB_COUNT}];
   uniform vec3  orbColor[${ORB_COUNT}];
@@ -86,18 +90,25 @@ const textFragmentShader = lightingGLSL + /* glsl */ `
   }
 `
 
-export function PercentLabel({ progress }) {
+export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColor = '#b020ff', unit = '%' }) {
   const [displayValue, setDisplayValue] = useState(progress)
+  const [displayUnit, setDisplayUnit] = useState(unit)
   const textRef = useRef()
   const animRef = useRef({ current: progress, target: progress })
   const displayRef = useRef(progress)
   const progressPropRef = useRef(progress)
   progressPropRef.current = progress
+  const primaryColorRef = useRef(primaryColor)
+  primaryColorRef.current = primaryColor
+  const secondaryColorRef = useRef(secondaryColor)
+  secondaryColorRef.current = secondaryColor
+  const unitRef = useRef(unit)
+  unitRef.current = unit
 
   const uniforms = useMemo(
     () => ({
-      colorA: { value: new THREE.Color('#00e5ff') },
-      colorB: { value: new THREE.Color('#b020ff') },
+      colorA: { value: new THREE.Color(primaryColor) },
+      colorB: { value: new THREE.Color(secondaryColor) },
       minX: { value: -1 },
       maxX: { value: 1 },
       orbBasePos: { value: ORB_LIGHTS.map((o) => new THREE.Vector3(o.position[0], o.position[1], o.position[2])) },
@@ -108,6 +119,11 @@ export function PercentLabel({ progress }) {
       orbDistance: { value: ORB_LIGHTS.map((o) => o.lightDistance) },
       orbTime: { value: 0 },
     }),
+    // Colors and orb properties are intentionally excluded from deps: the Color
+    // objects are mutated in-place each frame inside useFrame (via refs and the
+    // _tmpGrad* helpers), so rebuilding the uniforms object would wastefully
+    // recompile the shader on every theme change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
 
@@ -116,18 +132,31 @@ export function PercentLabel({ progress }) {
     const { current, target } = animRef.current
     animRef.current.current = current + (target - current) * 0.04
     uniforms.orbTime.value = clock.elapsedTime
+    uniforms.colorA.value.set(primaryColorRef.current)
+    uniforms.colorB.value.set(secondaryColorRef.current)
+
+    // Update orb lighting colors to match theme gradient
+    _tmpGradA.set(primaryColorRef.current)
+    _tmpGradB.set(secondaryColorRef.current)
+    const orbColors = uniforms.orbColor.value
+    for (let i = 0; i < ORB_COUNT; i++) {
+      const t = ORB_COUNT > 1 ? i / (ORB_COUNT - 1) : 0
+      orbColors[i].copy(_tmpGradA).lerp(_tmpGradB, t)
+    }
 
     const rounded = Math.round(animRef.current.current)
-    if (rounded !== displayRef.current) {
+    const currentUnit = unitRef.current
+    if (rounded !== displayRef.current || currentUnit !== displayUnit) {
       displayRef.current = rounded
       setDisplayValue(rounded)
+      setDisplayUnit(currentUnit)
     }
   })
 
   return (
     <Center position={[0, -0, 0]}>
       <Text3D
-        key={displayValue}
+        key={`${displayValue}${displayUnit}`}
         ref={textRef}
         font="/fonts/helvetiker_bold.typeface.json"
         size={0.58}
@@ -146,7 +175,7 @@ export function PercentLabel({ progress }) {
           }
         }}
       >
-        {`${displayValue}%`}
+        {`${displayValue}${displayUnit}`}
         <shaderMaterial
           vertexShader={textVertexShader}
           fragmentShader={textFragmentShader}
