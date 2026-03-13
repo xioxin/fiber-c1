@@ -49,7 +49,7 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
       </group>
 
       {/* 3D percentage text */}
-      <group position={[0, 0, 0]} scale={0.9}>
+      <group position={[0, 0, 0]} scale={unit == '°C'? 0.8 : 0.9}>
         <Suspense fallback={null}>
           <PercentLabel
             progress={progress}

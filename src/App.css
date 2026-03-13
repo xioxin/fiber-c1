@@ -3,6 +3,12 @@
 position: relative;
 width: 100vw;
 height: 100vh;
+cursor: none;
+}
+
+.app-root,
+.app-root * {
+cursor: none !important;
 }
 
 .debug-switcher {

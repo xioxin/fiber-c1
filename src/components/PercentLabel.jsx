@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text3D, Center } from '@react-three/drei'
 import * as THREE from 'three'
 import { ORB_LIGHTS } from './orbLightingConfig'
+import { cursorLightState } from './cursorLightState'
 
 const ORB_COUNT = ORB_LIGHTS.length
 
@@ -18,6 +19,12 @@ const lightingGLSL = /* glsl */ `
   uniform float orbIntensity[${ORB_COUNT}];
   uniform float orbDistance[${ORB_COUNT}];
   uniform float orbTime;
+
+  uniform vec3  cursorLightPos;
+  uniform vec3  cursorLightColor;
+  uniform float cursorLightIntensity;
+  uniform float cursorLightDistance;
+  uniform float cursorLightEnabled;
 
   vec3 applyOrbLights(vec3 N, vec3 V, vec3 worldPos) {
     vec3 acc = vec3(0.0);
@@ -43,6 +50,22 @@ const lightingGLSL = /* glsl */ `
     return acc;
   }
 
+  vec3 applyCursorLight(vec3 N, vec3 V, vec3 worldPos) {
+    if (cursorLightEnabled < 0.5) return vec3(0.0);
+
+    vec3 toLight = cursorLightPos - worldPos;
+    float dist = length(toLight);
+    float falloff = max(cursorLightDistance, 0.001);
+    float att = pow(max(1.0 - dist / falloff, 0.0), 2.0);
+    if (att <= 0.0) return vec3(0.0);
+
+    vec3 L = normalize(toLight);
+    float diff = max(dot(N, L), 0.0) * cursorLightIntensity * att;
+    vec3 H = normalize(L + V);
+    float spec = pow(max(dot(N, H), 0.0), 48.0) * 0.4 * cursorLightIntensity * att;
+    return (diff + spec) * cursorLightColor;
+  }
+
   vec3 applyLighting(vec3 base, vec3 N, vec3 V, vec3 worldPos, vec3 colorA) {
     vec3 L1 = normalize(vec3(2.0, 3.0, 4.0));
     vec3 L2 = normalize(vec3(-2.0, -2.0, 1.0));
@@ -54,7 +77,8 @@ const lightingGLSL = /* glsl */ `
          + diff * base
          + spec * vec3(1.0, 0.95, 1.0) * 0.85
          + rim * mix(colorA, vec3(1.0), 0.45) * 0.7
-         + applyOrbLights(N, V, worldPos);
+          + applyOrbLights(N, V, worldPos)
+          + applyCursorLight(N, V, worldPos);
   }
 `
 
@@ -118,6 +142,11 @@ export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColo
       orbIntensity: { value: ORB_LIGHTS.map((o) => o.lightIntensity) },
       orbDistance: { value: ORB_LIGHTS.map((o) => o.lightDistance) },
       orbTime: { value: 0 },
+      cursorLightPos: { value: new THREE.Vector3() },
+      cursorLightColor: { value: new THREE.Color('#ffffff') },
+      cursorLightIntensity: { value: 0 },
+      cursorLightDistance: { value: 4.6 },
+      cursorLightEnabled: { value: 0 },
     }),
     // Colors and orb properties are intentionally excluded from deps: the Color
     // objects are mutated in-place each frame inside useFrame (via refs and the
@@ -143,6 +172,13 @@ export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColo
       const t = ORB_COUNT > 1 ? i / (ORB_COUNT - 1) : 0
       orbColors[i].copy(_tmpGradA).lerp(_tmpGradB, t)
     }
+
+    // Sync cursor light for text shader lighting.
+    uniforms.cursorLightPos.value.copy(cursorLightState.position)
+    uniforms.cursorLightColor.value.copy(cursorLightState.color)
+    uniforms.cursorLightIntensity.value = cursorLightState.intensity
+    uniforms.cursorLightDistance.value = cursorLightState.distance
+    uniforms.cursorLightEnabled.value = cursorLightState.enabled ? 1 : 0
 
     const rounded = Math.round(animRef.current.current)
     const currentUnit = unitRef.current

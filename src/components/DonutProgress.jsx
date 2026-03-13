@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { ORB_LIGHTS } from './orbLightingConfig'
+import { cursorLightState } from './cursorLightState'
 
 const RADIUS      = 1.5
 const TUBE_RADIUS = 0.32
@@ -38,6 +39,12 @@ const lightingGLSL = /* glsl */ `
   uniform float orbDistance[${ORB_COUNT}];
   uniform float orbTime;
 
+  uniform vec3  cursorLightPos;
+  uniform vec3  cursorLightColor;
+  uniform float cursorLightIntensity;
+  uniform float cursorLightDistance;
+  uniform float cursorLightEnabled;
+
   vec3 applyOrbLights(vec3 N, vec3 V, vec3 worldPos) {
     vec3 acc = vec3(0.0);
     for (int i = 0; i < ${ORB_COUNT}; i++) {
@@ -62,6 +69,22 @@ const lightingGLSL = /* glsl */ `
     return acc;
   }
 
+  vec3 applyCursorLight(vec3 N, vec3 V, vec3 worldPos) {
+    if (cursorLightEnabled < 0.5) return vec3(0.0);
+
+    vec3 toLight = cursorLightPos - worldPos;
+    float dist = length(toLight);
+    float falloff = max(cursorLightDistance, 0.001);
+    float att = pow(max(1.0 - dist / falloff, 0.0), 2.0);
+    if (att <= 0.0) return vec3(0.0);
+
+    vec3 L = normalize(toLight);
+    float diff = max(dot(N, L), 0.0) * cursorLightIntensity * att;
+    vec3 H = normalize(L + V);
+    float spec = pow(max(dot(N, H), 0.0), 48.0) * 0.4 * cursorLightIntensity * att;
+    return (diff + spec) * cursorLightColor;
+  }
+
   vec3 applyLighting(vec3 base, vec3 N, vec3 V, vec3 worldPos, vec3 colorA) {
     vec3 L1 = normalize(vec3(2.0, 3.0, 4.0));
     vec3 L2 = normalize(vec3(-2.0, -2.0, 1.0));
@@ -73,7 +96,8 @@ const lightingGLSL = /* glsl */ `
          + diff  * base
          + spec  * vec3(1.0, 0.95, 1.0) * 0.9
          + rim   * mix(colorA, vec3(1.0), 0.4) * 0.6
-         + applyOrbLights(N, V, worldPos);
+          + applyOrbLights(N, V, worldPos)
+          + applyCursorLight(N, V, worldPos);
   }
 `
 
@@ -170,6 +194,11 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
       orbIntensity: { value: ORB_LIGHTS.map((o) => o.lightIntensity) },
       orbDistance: { value: ORB_LIGHTS.map((o) => o.lightDistance) },
       orbTime: { value: 0 },
+      cursorLightPos: { value: new THREE.Vector3() },
+      cursorLightColor: { value: new THREE.Color('#ffffff') },
+      cursorLightIntensity: { value: 0 },
+      cursorLightDistance: { value: 4.6 },
+      cursorLightEnabled: { value: 0 },
     }),
     [],
   )
@@ -224,6 +253,13 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
       const t = ORB_COUNT > 1 ? i / (ORB_COUNT - 1) : 0
       orbColors[i].copy(_tmpGradA).lerp(_tmpGradB, t)
     }
+
+    // Sync mouse cursor light so custom shader materials can be lit by it.
+    orbUniforms.cursorLightPos.value.copy(cursorLightState.position)
+    orbUniforms.cursorLightColor.value.copy(cursorLightState.color)
+    orbUniforms.cursorLightIntensity.value = cursorLightState.intensity
+    orbUniforms.cursorLightDistance.value = cursorLightState.distance
+    orbUniforms.cursorLightEnabled.value = cursorLightState.enabled ? 1 : 0
 
     // Only update drawRange — no geometry rebuild, no flickering, no gaps
     geometry.setDrawRange(0, Math.ceil(PATH_SEGS * next) * RADIAL_SEGS * 6)
