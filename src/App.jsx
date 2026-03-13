@@ -15,7 +15,7 @@ const RENDER_MODES = [
   { key: "interlaced", label: "交织图" },
 ];
 
-function Scene({ progress, renderMode }) {
+function Scene({ progress, renderMode, gratingParams }) {
   return (
     <>
       <color attach="background" args={["#05050f"]} />
@@ -44,9 +44,9 @@ function Scene({ progress, renderMode }) {
         <LenticularInterlacer
           focusPoint={[0, 0, 0]}
           interlaced={renderMode === "interlaced"}
-          obliquity={LenticularOptics.obliquity}
-          lineNumber={LenticularOptics.lineNumber}
-          deviation={LenticularOptics.deviation}
+          obliquity={gratingParams.obliquity}
+          lineNumber={gratingParams.lineNumber}
+          deviation={gratingParams.deviation}
           thetaDeg={LenticularOptics.thetaDeg}
         />
       )}
@@ -58,6 +58,14 @@ function Scene({ progress, renderMode }) {
 function App() {
   const [progress, setProgress] = useState(0);
   const [renderMode, setRenderMode] = useState("interlaced");
+  // Grating parameters: start with built-in defaults; updated from the
+  // Cubestage / OpenstageAI platform once the Electron pipe connects.
+  const [gratingParams, setGratingParams] = useState({
+    obliquity: LenticularOptics.obliquity,
+    lineNumber: LenticularOptics.lineNumber,
+    deviation: LenticularOptics.deviation,
+  });
+  const [displayConnected, setDisplayConnected] = useState(false);
   const isElectron = typeof window !== "undefined" && !!window.electronAPI;
 
   useEffect(() => {
@@ -65,8 +73,33 @@ function App() {
       // Get initial CPU value immediately
       window.electronAPI.getCpuLoad().then(setProgress);
       // Subscribe to push updates every second
-      const cleanup = window.electronAPI.onCpuLoad(setProgress);
-      return cleanup;
+      const cleanupCpu = window.electronAPI.onCpuLoad(setProgress);
+
+      // Fetch grating params from the platform (or defaults if offline)
+      window.electronAPI.getGratingParams().then((params) => {
+        if (params) setGratingParams(params);
+      });
+      // Subscribe to live platform updates
+      const cleanupGrating = window.electronAPI.onGratingParams((params) => {
+        if (params) setGratingParams(params);
+      });
+
+      // Get initial C1 display connection state
+      window.electronAPI.getDisplayStatus().then(({ connected }) => {
+        setDisplayConnected(connected);
+      });
+      // Subscribe to C1 connect / disconnect events
+      const cleanupDisplay = window.electronAPI.onDisplayStatus(
+        ({ connected }) => {
+          setDisplayConnected(connected);
+        }
+      );
+
+      return () => {
+        cleanupCpu();
+        cleanupGrating();
+        cleanupDisplay();
+      };
     } else {
       // Fallback: random values for browser preview
       const tick = () => {
@@ -84,7 +117,11 @@ function App() {
   return (
     <div className="app-root">
       <Canvas camera={{ position: [0, 0, 6.5], fov: 45 }}>
-        <Scene progress={progress} renderMode={renderMode} />
+        <Scene
+          progress={progress}
+          renderMode={renderMode}
+          gratingParams={gratingParams}
+        />
       </Canvas>
 
       <div
@@ -103,6 +140,13 @@ function App() {
           </button>
         ))}
       </div>
+
+      {isElectron && (
+        <div
+          className={`display-status ${displayConnected ? "connected" : "disconnected"}`}
+          title={displayConnected ? "C1 display connected" : "C1 display not detected"}
+        />
+      )}
     </div>
   );
 }

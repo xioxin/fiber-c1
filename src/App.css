@@ -44,6 +44,27 @@
 	font-weight: 700;
 }
 
+/* C1 display connection status indicator (bottom-right corner) */
+.display-status {
+	position: absolute;
+	bottom: 14px;
+	right: 14px;
+	z-index: 10;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	transition: background-color 0.4s ease;
+}
+
+.display-status.connected {
+	background-color: #00ff88;
+	box-shadow: 0 0 6px 2px rgba(0, 255, 136, 0.6);
+}
+
+.display-status.disconnected {
+	background-color: #444;
+}
+
 @media (max-width: 900px) {
 	.debug-switcher {
 		top: 10px;
