@@ -50,7 +50,6 @@ let pipeConnected = false
 let pipeRetryIndex = 0
 
 // Electron windows
-let mainWindow = null
 let viewerWindow = null
 
 // ---------------------------------------------------------------------------
@@ -152,7 +151,7 @@ function parsePipeData(respJson) {
 }
 
 function broadcastGratingParams() {
-  ;[mainWindow, viewerWindow].forEach((win) => {
+  ;[viewerWindow].forEach((win) => {
     if (win && !win.isDestroyed()) {
       win.webContents.send('grating-params', gratingParams)
     }
@@ -185,7 +184,7 @@ function findC1Display() {
 }
 
 function broadcastDisplayStatus(connected, displayId) {
-  ;[mainWindow, viewerWindow].forEach((win) => {
+  ;[ viewerWindow].forEach((win) => {
     if (win && !win.isDestroyed()) {
       win.webContents.send('display-status', { connected, displayId })
     }
@@ -217,35 +216,6 @@ function onDisplayRemoved(_event, display) {
 // Window creation
 // ---------------------------------------------------------------------------
 
-function createMainWindow() {
-  mainWindow = new BrowserWindow({
-    width: 900,
-    height: 700,
-    minWidth: 600,
-    minHeight: 500,
-    backgroundColor: '#05050f',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-    },
-  })
-
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
-  }
-
-  mainWindow.setMenuBarVisibility(false)
-
-  mainWindow.on('closed', () => {
-    mainWindow = null
-    if (viewerWindow && !viewerWindow.isDestroyed()) {
-      viewerWindow.close()
-    }
-  })
-}
 
 /**
  * Create a borderless fullscreen window on the C1 display.
@@ -268,6 +238,7 @@ function createViewerWindow(display) {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
+      nodeIntegration: true,
     },
   })
 
@@ -295,7 +266,7 @@ function startCpuPolling() {
     try {
       const load = await si.currentLoad()
       const cpuPercent = Math.round(load.currentLoad)
-      ;[mainWindow, viewerWindow].forEach((win) => {
+      ;[viewerWindow].forEach((win) => {
         if (win && !win.isDestroyed()) {
           win.webContents.send('cpu-load', cpuPercent)
         }
@@ -311,7 +282,6 @@ function startCpuPolling() {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(() => {
-  createMainWindow()
   startCpuPolling()
   connectToPlatform()
 
@@ -324,7 +294,7 @@ app.whenReady().then(() => {
   if (c1) createViewerWindow(c1)
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+
   })
 })
 

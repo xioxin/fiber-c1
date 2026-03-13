@@ -35,9 +35,11 @@ function Scene({ progress, renderMode, gratingParams }) {
       </group>
 
       {/* 3D percentage text */}
-      <Suspense fallback={null}>
-        <PercentLabel progress={progress} />
-      </Suspense>
+      <group position={[0, 0, 0]} scale={0.9}>
+        <Suspense fallback={null}>
+          <PercentLabel progress={progress} />
+        </Suspense>
+      </group>
 
       {/* Render 40 views and interlace into the final on-screen image */}
       {renderMode !== "single" && (
@@ -124,7 +126,7 @@ function App() {
         />
       </Canvas>
 
-      <div
+      {/* <div
         className="debug-switcher"
         role="group"
         aria-label="Render mode switcher"
@@ -139,14 +141,7 @@ function App() {
             {item.label}
           </button>
         ))}
-      </div>
-
-      {isElectron && (
-        <div
-          className={`display-status ${displayConnected ? "connected" : "disconnected"}`}
-          title={displayConnected ? "C1 display connected" : "C1 display not detected"}
-        />
-      )}
+      </div> */}
     </div>
   );
 }
