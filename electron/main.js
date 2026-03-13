@@ -1,8 +1,9 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, clipboard, shell, systemPreferences } from 'electron'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import net from 'net'
 import si from 'systeminformation'
+import { load as loadConfig, save as saveConfig } from './store.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = process.env.NODE_ENV === 'development'
@@ -10,8 +11,6 @@ const isDev = process.env.NODE_ENV === 'development'
 // ---------------------------------------------------------------------------
 // Named-pipe configuration for Cubestage / OpenstageAI platform
 // ---------------------------------------------------------------------------
-// Both platform variants expose a named pipe.  We try them in order and retry
-// on failure so the app works with whichever one is installed.
 const PIPE_NAMES = ['Cubestage_server_pipe', 'OpenstageAI_server_pipe']
 
 function getPipePath(name) {
@@ -20,8 +19,6 @@ function getPipePath(name) {
     : `/tmp/${name}`
 }
 
-// Application credentials used when sending requests to the platform.
-// Register your own app with Cubestage / OpenstageAI to receive real values.
 const APP_REQUEST_BASE = {
   id: 'inbuilt',
   app_id: 'fiber_c1_app',
@@ -34,23 +31,57 @@ const APP_REQUEST_BASE = {
 // State
 // ---------------------------------------------------------------------------
 
+let config = null
+
 // Default grating parameters (used when the platform is unavailable)
 let gratingParams = {
-  deviation: 16.25578, // X0  – horizontal origin of the lenticular grid
-  lineNumber: 19.6401, // Interval – pitch of one lenticular lens (subpixels)
-  obliquity: 0.10516,  // Slope   – tangent of the lens-array tilt angle
+  deviation: 16.25578,
+  lineNumber: 19.6401,
+  obliquity: 0.10516,
 }
 
-// Display labels reported by the platform for connected C1 units
 let c1LabelList = []
-
-// Named-pipe client
 let pipeClient = null
 let pipeConnected = false
 let pipeRetryIndex = 0
 
-// Electron windows
 let viewerWindow = null
+let settingsWindow = null
+let tray = null
+
+// ---------------------------------------------------------------------------
+// Config helpers
+// ---------------------------------------------------------------------------
+
+function getConfig() {
+  if (!config) {
+    config = loadConfig()
+    // Restore saved grating params as fallback for when the platform is offline
+    if (config.gratingParams) {
+      gratingParams = { ...gratingParams, ...config.gratingParams }
+    }
+  }
+  return config
+}
+
+/** Deep-merge partial into target (partial values win). */
+function deepMergePartial(target, partial) {
+  const result = { ...target }
+  for (const key of Object.keys(partial)) {
+    if (
+      partial[key] !== null &&
+      typeof partial[key] === 'object' &&
+      !Array.isArray(partial[key]) &&
+      typeof target[key] === 'object' &&
+      target[key] !== null
+    ) {
+      result[key] = deepMergePartial(target[key], partial[key])
+    } else {
+      result[key] = partial[key]
+    }
+  }
+  return result
+}
 
 // ---------------------------------------------------------------------------
 // Named-pipe helpers
@@ -66,7 +97,6 @@ function connectToPlatform() {
   pipeClient.on('connect', () => {
     pipeConnected = true
     console.log('[pipe] Connected to', pipeName)
-    // Request device configuration immediately, then fetch the C1 label list.
     // NOTE: 'getDeivice' is the exact string used by the platform protocol
     // (the misspelling is intentional and must be preserved for compatibility).
     sendToPlatform('getDeivice')
@@ -85,7 +115,6 @@ function connectToPlatform() {
     pipeConnected = false
     pipeClient = null
     pipeRetryIndex++
-    // Alternate between pipe names on each retry
     setTimeout(connectToPlatform, 3000)
   })
 
@@ -102,7 +131,6 @@ function sendToPlatform(requestType) {
   pipeClient.write(JSON.stringify(request))
 }
 
-/** Parse a JSON message from the platform pipe and act on it. */
 function parsePipeData(respJson) {
   if (!respJson || respJson.length <= 2) return
 
@@ -110,14 +138,10 @@ function parsePipeData(respJson) {
   let requestType = ''
   let responseData = null
 
-  // Compatible with new and old platform response formats:
-  //   New: { request_type, response_data: { type, config } }
-  //   Old: { type, config }
   if (response.request_type) {
     requestType = response.request_type
     responseData = response.response_data
-    // NOTE: 'getDeivice' (misspelling) is the exact protocol token used by
-    // both Cubestage and OpenstageAI — do not correct it.
+    // NOTE: 'getDeivice' (misspelling) is the exact protocol token
     if (requestType === 'getDeivice') {
       requestType = responseData?.type
       responseData = responseData?.config
@@ -136,7 +160,6 @@ function parsePipeData(respJson) {
     return
   }
 
-  // 'getDeivice' (misspelling) and 'device' are both used by platform versions
   if (requestType === 'getDeivice' || requestType === 'device') {
     if (responseData.deviation !== undefined) {
       gratingParams = {
@@ -145,6 +168,10 @@ function parsePipeData(respJson) {
         obliquity: responseData.obliquity,
       }
       console.log('[pipe] Grating params updated:', gratingParams)
+      // Persist the latest grating params so they can be restored on next startup
+      const cfg = getConfig()
+      cfg.gratingParams = { ...gratingParams }
+      saveConfig(cfg)
       broadcastGratingParams()
     }
   }
@@ -162,29 +189,25 @@ function broadcastGratingParams() {
 // C1 display detection
 // ---------------------------------------------------------------------------
 
-/** Return the C1 display if one is currently connected, otherwise null. */
 function findC1Display() {
   const all = screen.getAllDisplays()
 
-  // Prefer the label list provided by the platform
   if (c1LabelList.length > 0) {
     const byLabel = all.find((d) => c1LabelList.includes(d.label))
     if (byLabel) return byLabel
   }
 
-  // Fallback: C1 native resolution is 1440 × 2560 (portrait)
   const byResolution = all.find(
     (d) => d.size.width === 1440 && d.size.height === 2560,
   )
   if (byResolution) return byResolution
 
-  // Fallback: any non-primary display when more than one is connected
   const primary = screen.getPrimaryDisplay()
   return all.find((d) => d.id !== primary.id) || null
 }
 
 function broadcastDisplayStatus(connected, displayId) {
-  ;[ viewerWindow].forEach((win) => {
+  ;[viewerWindow].forEach((win) => {
     if (win && !win.isDestroyed()) {
       win.webContents.send('display-status', { connected, displayId })
     }
@@ -193,7 +216,6 @@ function broadcastDisplayStatus(connected, displayId) {
 
 function onDisplayAdded(_event, display) {
   console.log('[screen] display-added:', display.id, display.label || '')
-  // Give the OS a moment to settle before querying the display list
   setTimeout(() => {
     if (!viewerWindow) {
       const c1 = findC1Display()
@@ -216,11 +238,6 @@ function onDisplayRemoved(_event, display) {
 // Window creation
 // ---------------------------------------------------------------------------
 
-
-/**
- * Create a borderless fullscreen window on the C1 display.
- * This window renders the lenticular-interlaced 3D content for the C1.
- */
 function createViewerWindow(display) {
   if (viewerWindow && !viewerWindow.isDestroyed()) return
 
@@ -255,26 +272,148 @@ function createViewerWindow(display) {
   })
 }
 
+function openSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus()
+    return
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 520,
+    height: 680,
+    resizable: false,
+    fullscreen: false,
+    frame: true,
+    backgroundColor: '#0d0d1a',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: true,
+    },
+  })
+
+  if (isDev) {
+    settingsWindow.loadURL('http://localhost:5173/#settings')
+  } else {
+    settingsWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+      hash: 'settings',
+    })
+  }
+
+  settingsWindow.setMenuBarVisibility(false)
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
+  })
+}
+
 // ---------------------------------------------------------------------------
-// CPU polling
+// System tray
+// ---------------------------------------------------------------------------
+
+function createTray() {
+  const iconPath = path.join(__dirname, 'assets', 'tray-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
+  tray = new Tray(icon.resize({ width: 16, height: 16 }))
+  tray.setToolTip('Fiber C1')
+  rebuildTrayMenu()
+}
+
+function rebuildTrayMenu() {
+  if (!tray) return
+  const cfg = getConfig()
+  const lang = cfg.language || 'zh'
+
+  const strings = {
+    zh: { settings: '设置', copyCalib: '复制校准信息', github: 'GitHub', exit: '退出' },
+    en: { settings: 'Settings', copyCalib: 'Copy Calibration Info', github: 'GitHub', exit: 'Exit' },
+  }
+  const s = strings[lang] || strings.zh
+
+  const menu = Menu.buildFromTemplate([
+    { label: s.settings, click: () => openSettingsWindow() },
+    {
+      label: s.copyCalib,
+      click: () => clipboard.writeText(JSON.stringify(gratingParams, null, 2)),
+    },
+    { label: s.github, click: () => shell.openExternal('https://github.com/xioxin/fiber-c1') },
+    { type: 'separator' },
+    { label: s.exit, click: () => app.quit() },
+  ])
+
+  tray.setContextMenu(menu)
+}
+
+// ---------------------------------------------------------------------------
+// System metrics polling
 // ---------------------------------------------------------------------------
 
 let cpuPollInterval = null
 
-function startCpuPolling() {
-  cpuPollInterval = setInterval(async () => {
-    try {
-      const load = await si.currentLoad()
-      const cpuPercent = Math.round(load.currentLoad)
-      ;[viewerWindow].forEach((win) => {
-        if (win && !win.isDestroyed()) {
-          win.webContents.send('cpu-load', cpuPercent)
-        }
-      })
-    } catch {
-      // ignore transient errors
+let latestMetrics = {
+  cpuLoad: 0,
+  cpuTemp: 0,
+  memUsage: 0,
+  gpuLoad: 0,
+  vramUsage: 0,
+  gpuTemp: 0,
+}
+
+async function pollSystemMetrics() {
+  try {
+    const [load, temp, mem, graphics] = await Promise.all([
+      si.currentLoad(),
+      si.cpuTemperature(),
+      si.mem(),
+      si.graphics(),
+    ])
+
+    latestMetrics.cpuLoad = Math.round(load.currentLoad)
+    latestMetrics.cpuTemp = Math.round(temp.main || 0)
+    latestMetrics.memUsage = Math.round((mem.used / mem.total) * 100)
+
+    const gpu = graphics.controllers?.find(
+      (c) => c.utilizationGpu !== undefined && c.utilizationGpu !== null,
+    ) || graphics.controllers?.[0]
+
+    if (gpu) {
+      latestMetrics.gpuLoad = Math.round(gpu.utilizationGpu || 0)
+      latestMetrics.gpuTemp = Math.round(gpu.temperatureGpu || 0)
+      const vramTotal = gpu.vram || 0
+      const vramUsed = gpu.memoryUsed || 0
+      latestMetrics.vramUsage = vramTotal > 0 ? Math.round((vramUsed / vramTotal) * 100) : 0
     }
-  }, 1000)
+
+    broadcastMetrics()
+  } catch {
+    // ignore transient errors
+  }
+}
+
+const DISPLAY_INFO_METRIC_MAP = {
+  cpu_usage:  () => latestMetrics.cpuLoad,
+  cpu_temp:   () => latestMetrics.cpuTemp,
+  mem_usage:  () => latestMetrics.memUsage,
+  gpu_usage:  () => latestMetrics.gpuLoad,
+  vram_usage: () => latestMetrics.vramUsage,
+  gpu_temp:   () => latestMetrics.gpuTemp,
+}
+
+function broadcastMetrics() {
+  const cfg = getConfig()
+  const info = cfg.displayInfo || 'cpu_usage'
+  const getMetric = DISPLAY_INFO_METRIC_MAP[info] ?? DISPLAY_INFO_METRIC_MAP.cpu_usage
+  const value = getMetric()
+
+  ;[viewerWindow].forEach((win) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('cpu-load', value)
+    }
+  })
+}
+
+function startCpuPolling() {
+  cpuPollInterval = setInterval(pollSystemMetrics, 1000)
 }
 
 // ---------------------------------------------------------------------------
@@ -282,20 +421,18 @@ function startCpuPolling() {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(() => {
+  getConfig()
   startCpuPolling()
   connectToPlatform()
+  createTray()
 
-  // Listen for display connect / disconnect events
   screen.on('display-added', onDisplayAdded)
   screen.on('display-removed', onDisplayRemoved)
 
-  // If a C1 is already connected at startup, open the viewer window immediately
   const c1 = findC1Display()
   if (c1) createViewerWindow(c1)
 
-  app.on('activate', () => {
-
-  })
+  app.on('activate', () => {})
 })
 
 app.on('window-all-closed', () => {
@@ -308,16 +445,51 @@ app.on('window-all-closed', () => {
 // IPC handlers
 // ---------------------------------------------------------------------------
 
-// Allow renderer to request a one-off CPU snapshot
 ipcMain.handle('get-cpu-load', async () => {
   const load = await si.currentLoad()
   return Math.round(load.currentLoad)
 })
 
-// Return the current grating parameters (from platform or defaults)
 ipcMain.handle('get-grating-params', () => gratingParams)
 
-// Return whether a C1 display is currently connected
 ipcMain.handle('get-display-status', () => ({
   connected: findC1Display() !== null,
 }))
+
+// ---- Settings ----
+
+ipcMain.handle('get-settings', () => getConfig())
+
+ipcMain.handle('set-settings', (_event, partial) => {
+  const cfg = getConfig()
+  const updated = deepMergePartial(cfg, partial)
+  config = updated
+  saveConfig(updated)
+  rebuildTrayMenu()
+  ;[viewerWindow, settingsWindow].forEach((win) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('settings-updated', updated)
+    }
+  })
+  return updated
+})
+
+ipcMain.handle('get-system-accent-color', () => {
+  try {
+    if (process.platform === 'win32' || process.platform === 'darwin') {
+      const hex = systemPreferences.getAccentColor()
+      return '#' + hex.slice(0, 6)
+    }
+  } catch {
+    // not available on this platform
+  }
+  return null
+})
+
+ipcMain.handle('get-system-metrics', () => ({ ...latestMetrics }))
+
+ipcMain.handle('close-settings', () => {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.close()
+  }
+})

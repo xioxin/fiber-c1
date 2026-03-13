@@ -86,18 +86,22 @@ const textFragmentShader = lightingGLSL + /* glsl */ `
   }
 `
 
-export function PercentLabel({ progress }) {
+export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColor = '#b020ff' }) {
   const [displayValue, setDisplayValue] = useState(progress)
   const textRef = useRef()
   const animRef = useRef({ current: progress, target: progress })
   const displayRef = useRef(progress)
   const progressPropRef = useRef(progress)
   progressPropRef.current = progress
+  const primaryColorRef = useRef(primaryColor)
+  primaryColorRef.current = primaryColor
+  const secondaryColorRef = useRef(secondaryColor)
+  secondaryColorRef.current = secondaryColor
 
   const uniforms = useMemo(
     () => ({
-      colorA: { value: new THREE.Color('#00e5ff') },
-      colorB: { value: new THREE.Color('#b020ff') },
+      colorA: { value: new THREE.Color(primaryColor) },
+      colorB: { value: new THREE.Color(secondaryColor) },
       minX: { value: -1 },
       maxX: { value: 1 },
       orbBasePos: { value: ORB_LIGHTS.map((o) => new THREE.Vector3(o.position[0], o.position[1], o.position[2])) },
@@ -108,6 +112,7 @@ export function PercentLabel({ progress }) {
       orbDistance: { value: ORB_LIGHTS.map((o) => o.lightDistance) },
       orbTime: { value: 0 },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
 
@@ -116,6 +121,8 @@ export function PercentLabel({ progress }) {
     const { current, target } = animRef.current
     animRef.current.current = current + (target - current) * 0.04
     uniforms.orbTime.value = clock.elapsedTime
+    uniforms.colorA.value.set(primaryColorRef.current)
+    uniforms.colorB.value.set(secondaryColorRef.current)
 
     const rounded = Math.round(animRef.current.current)
     if (rounded !== displayRef.current) {

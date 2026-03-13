@@ -130,13 +130,17 @@ const capFragmentShader = lightingGLSL + /* glsl */ `
   }
 `
 
-export function DonutProgress({ progress }) {
+export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryColor = '#b020ff' }) {
   const groupRef    = useRef()
   const arcGroupRef = useRef()
   const endCapRef   = useRef()
   const animRef     = useRef({ current: progress / 100, target: progress / 100 })
   const progressRef = useRef(progress)
   progressRef.current = progress
+  const primaryColorRef = useRef(primaryColor)
+  primaryColorRef.current = primaryColor
+  const secondaryColorRef = useRef(secondaryColor)
+  secondaryColorRef.current = secondaryColor
 
   // Full-circle tube — created ONCE, never rebuilt.
   // drawRange controls how much of it is rendered each frame.
@@ -166,26 +170,31 @@ export function DonutProgress({ progress }) {
   )
 
   const uniforms = useMemo(() => ({
-    colorA:   { value: new THREE.Color('#00e5ff') },
-    colorB:   { value: new THREE.Color('#b020ff') },
+    colorA:   { value: new THREE.Color(primaryColor) },
+    colorB:   { value: new THREE.Color(secondaryColor) },
     progress: { value: progress / 100 },
     ...orbUniforms,
+    // Colors are intentionally excluded from deps: uniform.value objects are
+    // mutated each frame in useFrame via primaryColorRef/secondaryColorRef.
+    // Rebuilding uniforms on every color change would cause shader recompilation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [orbUniforms])
 
   // Cap uniforms share the same colorA/colorB objects — colour is always in sync
   const startCapUniforms = useMemo(() => ({
-    colorA: { value: new THREE.Color('#00e5ff') },
-    colorB: { value: new THREE.Color('#b020ff') },
+    colorA: { value: new THREE.Color(primaryColor) },
+    colorB: { value: new THREE.Color(secondaryColor) },
     capT:   { value: 0.0 },
     ...orbUniforms,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [orbUniforms])
 
   const endCapUniforms = useMemo(() => ({
-    colorA: { value: new THREE.Color('#00e5ff') },
-    colorB: { value: new THREE.Color('#b020ff') },
+    colorA: { value: new THREE.Color(primaryColor) },
+    colorB: { value: new THREE.Color(secondaryColor) },
     capT:   { value: 1.0 },
     ...orbUniforms,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [orbUniforms])
 
   useFrame(({ clock }) => {
@@ -193,6 +202,14 @@ export function DonutProgress({ progress }) {
     const { current, target } = animRef.current
     const next = current + (target - current) * 0.04
     animRef.current.current = next
+
+    // Sync theme colors from props
+    uniforms.colorA.value.set(primaryColorRef.current)
+    uniforms.colorB.value.set(secondaryColorRef.current)
+    startCapUniforms.colorA.value.set(primaryColorRef.current)
+    startCapUniforms.colorB.value.set(secondaryColorRef.current)
+    endCapUniforms.colorA.value.set(primaryColorRef.current)
+    endCapUniforms.colorB.value.set(secondaryColorRef.current)
 
     // Only update drawRange — no geometry rebuild, no flickering, no gaps
     geometry.setDrawRange(0, Math.ceil(PATH_SEGS * next) * RADIAL_SEGS * 6)
