@@ -92,7 +92,7 @@ const tempRotatedOffset = new THREE.Vector3()
 
 export function LenticularInterlacer({ 
     focusPoint = [0, 0, 0], 
-    mode = 'interlaced',
+    interlaced = true,
     obliquity = 0.10516,
     lineNumber = 19.6401,
     deviation = 16.25578,
@@ -180,8 +180,7 @@ export function LenticularInterlacer({
     gl.xr.enabled = false
     gl.autoClear = true
 
-    if (mode !== 'single') {
-      tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2])
+   tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2])
       tempOffset.copy(mainCamera.position).sub(tempTarget)
 
       const thetaRad = THREE.MathUtils.degToRad(thetaDeg)
@@ -223,18 +222,13 @@ export function LenticularInterlacer({
       }
 
       gl.setScissorTest(false)
-    }
 
     gl.setRenderTarget(null)
     gl.setViewport(0, 0, size.width, size.height)
     gl.clear(true, true, true)
 
-    if (mode === 'single') {
-      gl.render(scene, mainCamera)
-    } else {
-      fullScreenQuad.material = mode === 'atlas' ? atlasPreviewMaterial : interlaceMaterial
-      gl.render(postScene, postCamera)
-    }
+    fullScreenQuad.material = interlaced ? interlaceMaterial : atlasPreviewMaterial
+    gl.render(postScene, postCamera)
 
     gl.setRenderTarget(prevTarget)
     gl.setScissorTest(prevScissorTest)
