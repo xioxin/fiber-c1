@@ -16,6 +16,8 @@
     "@react-spring/three": "^10.0.3",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "node-nvidia-smi": "^1.0.0",
+    "node-wmi": "^0.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "systeminformation": "^5.31.4",
