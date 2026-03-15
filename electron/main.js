@@ -408,12 +408,11 @@ async function pollSystemMetrics() {
 }
 
 
-function broadcastMetrics() {
-  const cfg = getConfig()
-  const info = cfg.displayInfo || 'cpu_usage'
+async function broadcastMetrics() {
+  const metric = await getSystemMetric();
   ;[viewerWindow].forEach((win) => {
     if (win && !win.isDestroyed()) {
-      win.webContents.send('system-metric', latestMetric)
+      win.webContents.send('system-metric', metric)
     }
   })
 }
@@ -473,9 +472,9 @@ ipcMain.handle('get-settings', () => getConfig())
 ipcMain.handle('set-settings', (_event, partial) => {
   const cfg = getConfig()
   const updated = deepMergePartial(cfg, partial)
-  config = updated
   saveConfig(updated)
   rebuildTrayMenu()
+  broadcastMetrics()
   ;[viewerWindow, settingsWindow].forEach((win) => {
     if (win && !win.isDestroyed()) {
       win.webContents.send('settings-updated', updated)
