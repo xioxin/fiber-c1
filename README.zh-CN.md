@@ -1,4 +1,4 @@
-# Fiber C1
+# Fiber C1 / DonutMonitor
 
 基于 **React + React Three Fiber + Electron** 构建的 [CubeVi C1](https://cubevi.com/products/cube-c1) 裸眼3D显示屏模板应用。项目以全息3D场景的形式实时展示系统监控数据（CPU / GPU / 内存），并内置了开箱即用的 `LenticularInterlacer` 组件，负责全部多视角渲染与光栅交织合成工作。
 

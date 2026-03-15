@@ -35,7 +35,7 @@ function resolveThemeColors(theme) {
 function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryColor, unit }) {
   return (
     <>
-      <color attach="background" args={["#05050f"]} />
+      <color attach="background" args={["#000000"]} />
 
       {/* Lighting */}
       <ambientLight intensity={0.15} />

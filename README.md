@@ -1,4 +1,4 @@
-# Fiber C1
+# Fiber C1 / DonutMonitor
 
 A glasses-free 3D display template app for the [CubeVi C1](https://cubevi.com/products/cube-c1) lenticular display, built with **React + React Three Fiber + Electron**. It renders a real-time system-metrics dashboard (CPU / GPU / memory) as a holographic 3D scene and ships a ready-to-extend `LenticularInterlacer` component that handles all multi-view rendering and interlacing.
 
