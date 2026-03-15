@@ -238,11 +238,13 @@ The main process tries both in sequence and reconnects automatically on disconne
 // Request
 { request_type: 'getDeivice', ... }
 
-// Response field (response_data.config)
+// Response field (response_data)
 {
-  x0:       16.25578,   // → deviation   (X0)
-  interval: 19.6401,    // → lineNumber  (Interval)
-  slope:    0.10516     // → obliquity   (Slope)
+  config: {
+    deviation:  16.25578,   // → X0
+    lineNumber: 19.6401,    // → Interval
+    obliquity:  0.10516     // → Slope
+  }
 }
 ```
 
@@ -252,13 +254,10 @@ Once received, the values are pushed to the renderer via IPC (`onGratingParams`)
 
 | Method | Description |
 |---|---|
-| `getCpuLoad()` | Get current CPU load snapshot |
-| `onSystemMetric(cb)` | Subscribe to periodic CPU load updates |
 | `getGratingParams()` | Get last-known grating params |
 | `onGratingParams(cb)` | Subscribe to grating param updates from platform |
 | `getSettings()` | Load persisted settings |
 | `setSettings(patch)` | Save partial settings update |
-| `getSystemAccentColor()` | Read OS accent colour (Windows) |
 | `closeSettings()` | Close the settings window |
 
 ---

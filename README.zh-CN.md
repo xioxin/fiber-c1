@@ -238,11 +238,13 @@ const [debugAtlas, setDebugAtlas] = useState(false)
 // 请求
 { request_type: 'getDeivice', ... }
 
-// 响应字段（response_data.config）
+// 响应字段（response_data）
 {
-  deviation:  16.25578,   // → X0 水平偏移
-  lineNumber: 19.6401,    // → Interval 间距
-  obliquity:  0.10516     // → Slope 斜率
+  config: {
+    deviation:  16.25578,   // → X0 水平偏移
+    lineNumber: 19.6401,    // → Interval 间距
+    obliquity:  0.10516     // → Slope 斜率
+  }
 }
 ```
 
@@ -252,13 +254,10 @@ const [debugAtlas, setDebugAtlas] = useState(false)
 
 | 方法 | 说明 |
 |---|---|
-| `getCpuLoad()` | 获取当前 CPU 负载快照 |
-| `onSystemMetric(cb)` | 订阅周期性 CPU 负载更新 |
 | `getGratingParams()` | 获取最近一次的光栅参数 |
 | `onGratingParams(cb)` | 订阅来自平台的光栅参数更新 |
 | `getSettings()` | 加载持久化设置 |
 | `setSettings(patch)` | 保存部分设置更新 |
-| `getSystemAccentColor()` | 读取操作系统强调色（Windows） |
 | `closeSettings()` | 关闭设置窗口 |
 
 ---
