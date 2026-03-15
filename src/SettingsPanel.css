@@ -19,6 +19,8 @@
   padding: 16px 20px 12px;
   border-bottom: 1px solid rgba(120, 140, 220, 0.2);
   background: rgba(10, 10, 25, 0.9);
+  -webkit-app-region: drag;
+  user-select: none;
 }
 
 .sp-title {
@@ -29,6 +31,7 @@
 }
 
 .sp-close-btn {
+  -webkit-app-region: no-drag;
   background: none;
   border: 1px solid rgba(120, 140, 220, 0.3);
   color: #8899cc;

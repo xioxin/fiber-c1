@@ -1,7 +1,7 @@
 {
   "name": "fiber-c1",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -40,8 +40,9 @@
     "wait-on": "^9.0.4"
   },
   "build": {
-    "appId": "com.fiber-c1.app",
-    "productName": "Fiber C1",
+    "appId": "com.xioxin.donutmonitor",
+    "productName": "DonutMonitor",
+    "artifactName": "DonutMonitor-Setup-${version}.${ext}",
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -51,7 +52,15 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "electron/assets/icon.ico"
+    },
+    "nsis": {
+      "include": "installer.nsi",
+      "installerIcon": "electron/assets/icon.ico",
+      "uninstallerIcon": "electron/assets/uninstall.ico",
+      "shortcutName": "DonutMonitor",
+      "uninstallDisplayName": "DonutMonitor"
     },
     "mac": {
       "target": "dmg"

@@ -1,13 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // ---- CPU load ----
-  onCpuLoad: (callback) => {
+  onSystemMetric: (callback) => {
     const handler = (_event, value) => callback(value)
-    ipcRenderer.on('cpu-load', handler)
-    return () => ipcRenderer.removeListener('cpu-load', handler)
+    ipcRenderer.on('system-metric', handler)
+    return () => ipcRenderer.removeListener('system-metric', handler)
   },
-  getCpuLoad: () => ipcRenderer.invoke('get-cpu-load'),
+  getSystemMetric: async () => await ipcRenderer.invoke('get-system-metric'),
 
   // ---- Grating parameters (from Cubestage / OpenstageAI platform) ----
   getGratingParams: () => ipcRenderer.invoke('get-grating-params'),
@@ -39,5 +38,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemAccentColor: () => ipcRenderer.invoke('get-system-accent-color'),
 
   // ---- Extended system metrics ----
-  getSystemMetrics: () => ipcRenderer.invoke('get-system-metrics'),
+  getSystemMetric: () => ipcRenderer.invoke('get-system-metric'),
 })

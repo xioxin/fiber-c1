@@ -4,7 +4,7 @@ import './SettingsPanel.css'
 
 const DISPLAY_INFO_TYPES = [
   'cpu_usage',
-  'cpu_temp',
+  // 'cpu_temp', // <-- todo: Both WMI and SystemInformation cannot be obtained
   'mem_usage',
   'gpu_usage',
   'vram_usage',
@@ -121,7 +121,11 @@ export function SettingsPanel() {
 
           {/* Theme mode selector */}
           <div className="sp-row">
-            {['system', 'preset', 'custom'].map((mode) => (
+            {[
+              // 'system', // <-- TODO
+              'preset', 
+              'custom'
+            ].map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -205,7 +209,6 @@ export function SettingsPanel() {
                   onClick={() => updateSettings({ displayInfo: type })}
                 >
                   <span className="sp-info-label">{t(lang, `info_${type}`)}</span>
-                  <span className="sp-info-unit">{unit}</span>
                 </button>
               )
             })}

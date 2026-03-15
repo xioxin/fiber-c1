@@ -41,7 +41,7 @@ function CursorGlowOrb({ color, focusPoint }) {
   const haloRef = useRef()
   const lightRef = useRef()
   const pointerRef = useRef({ x: 0, y: 0 })
-  const pointerInWindowRef = useRef(true)
+  const pointerInWindowRef = useRef(false)
   const pressedRef = useRef(false)
   const depthRef = useRef(0)
   const depthReadyRef = useRef(false)

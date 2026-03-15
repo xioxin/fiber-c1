@@ -253,7 +253,7 @@ Once received, the values are pushed to the renderer via IPC (`onGratingParams`)
 | Method | Description |
 |---|---|
 | `getCpuLoad()` | Get current CPU load snapshot |
-| `onCpuLoad(cb)` | Subscribe to periodic CPU load updates |
+| `onSystemMetric(cb)` | Subscribe to periodic CPU load updates |
 | `getGratingParams()` | Get last-known grating params |
 | `onGratingParams(cb)` | Subscribe to grating param updates from platform |
 | `getSettings()` | Load persisted settings |

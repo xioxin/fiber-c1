@@ -253,7 +253,7 @@ const [debugAtlas, setDebugAtlas] = useState(false)
 | 方法 | 说明 |
 |---|---|
 | `getCpuLoad()` | 获取当前 CPU 负载快照 |
-| `onCpuLoad(cb)` | 订阅周期性 CPU 负载更新 |
+| `onSystemMetric(cb)` | 订阅周期性 CPU 负载更新 |
 | `getGratingParams()` | 获取最近一次的光栅参数 |
 | `onGratingParams(cb)` | 订阅来自平台的光栅参数更新 |
 | `getSettings()` | 加载持久化设置 |

@@ -22,10 +22,10 @@ function getPipePath(name) {
 
 const APP_REQUEST_BASE = {
   id: 'inbuilt',
-  app_id: 'fiber_c1_app',
-  app_key: 'fiber_c1_key',
-  app_secret: 'fiber_c1_secret',
-  app_version: '0.0.0',
+  app_id: 'donut_monitor_app',
+  app_key: 'donut_monitor_key',
+  app_secret: 'donut_monitor_secret',
+  app_version: '1.0.0',
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +134,8 @@ function sendToPlatform(requestType) {
 
 function parsePipeData(respJson) {
   if (!respJson || respJson.length <= 2) return
+
+  console.log('[pipe] Received data: %s', respJson)
 
   const response = JSON.parse(respJson)
   let requestType = ''
@@ -253,6 +255,7 @@ function createViewerWindow(display) {
     fullscreen: true,
     frame: false,
     backgroundColor: '#05050f',
+    skipTaskbar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -284,8 +287,9 @@ function openSettingsWindow() {
     height: 680,
     resizable: false,
     fullscreen: false,
-    frame: true,
+    frame: false,
     backgroundColor: '#0d0d1a',
+    title: 'Settings',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -316,7 +320,7 @@ function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'tray-icon.png')
   const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon.resize({ width: 16, height: 16 }))
-  tray.setToolTip('Fiber C1')
+  tray.setToolTip('DonutMonitor')
   rebuildTrayMenu()
 }
 
@@ -338,6 +342,9 @@ function rebuildTrayMenu() {
       click: () => clipboard.writeText(JSON.stringify(gratingParams, null, 2)),
     },
     { label: s.github, click: () => shell.openExternal('https://github.com/xioxin/fiber-c1') },
+    { label: 'DevTools', click: () => viewerWindow.webContents.openDevTools({
+        mode: 'detach',
+    }) },
     { type: 'separator' },
     { label: s.exit, click: () => app.quit() },
   ])
@@ -352,44 +359,64 @@ function rebuildTrayMenu() {
 let cpuPollInterval = null
 let pollInProgress = false
 
-let latestMetrics = {
-  cpuLoad: 0,
-  cpuTemp: 0,
-  memUsage: 0,
-  gpuLoad: 0,
-  vramUsage: 0,
-  gpuTemp: 0,
+// let latestMetrics = {
+//   cpuLoad: 0,
+//   cpuTemp: 0,
+//   memUsage: 0,
+//   gpuLoad: 0,
+//   vramUsage: 0,
+//   gpuTemp: 0,
+// }
+
+
+let latestMetric = {
+  type: 'cpu_usage',
+  value: 0,
+  unit: '%'
 }
+
+const DISPLAY_INFO_VALUE_GETTERS = {
+  cpu_usage:  async () => {
+    const load = await si.currentLoad()
+    return Math.round(load.currentLoad)
+  },
+  cpu_temp:   async () => {
+    return await getCpuTemperature();
+  },
+  mem_usage:  async () => {
+    const mem = await si.mem()
+    return Math.round((mem.used / mem.total) * 100)
+  },
+  gpu_usage:  async () => {
+    const gpu = await getGpuMetrics()
+    return gpu.gpuLoad
+  },
+  vram_usage: async () => {
+    const gpu = await getGpuMetrics()
+    return gpu.vramUsage
+  },
+  gpu_temp:   async () => {
+    const gpu = await getGpuMetrics()
+    return gpu.gpuTemp
+  }
+}
+
+
+async function getSystemMetric() {
+  const cfg = getConfig()
+  const info = cfg.displayInfo || 'cpu_usage'
+  const getMetric = DISPLAY_INFO_VALUE_GETTERS[info] ?? DISPLAY_INFO_VALUE_GETTERS.cpu_usage
+  const value = await getMetric()
+  return { type: info, value, unit: info.includes('temp') ? '°C' : '%' }
+}
+
 
 async function pollSystemMetrics() {
   // Prevent stacking: skip if the previous poll has not finished yet
   if (pollInProgress) return
   pollInProgress = true
   try {
-    const cfg = getConfig()
-    const info = cfg.displayInfo || 'cpu_usage'
-
-    if (info === 'cpu_usage') {
-      const load = await si.currentLoad()
-      latestMetrics.cpuLoad = Math.round(load.currentLoad)
-    } else if (info === 'cpu_temp') {
-      // node-wmi queries Win32_PerfFormattedData_Counters_ThermalZoneInformation
-      // (si.cpuTemperature() returns 0 on most Windows machines without
-      // third-party sensor software installed)
-      latestMetrics.cpuTemp = await getCpuTemperature()
-    } else if (info === 'mem_usage') {
-      const mem = await si.mem()
-      latestMetrics.memUsage = Math.round((mem.used / mem.total) * 100)
-    } else {
-      // gpu_usage | vram_usage | gpu_temp
-      // node-nvidia-smi calls nvidia-smi directly (much cheaper than si.graphics()
-      // which issues expensive WMI queries on Windows)
-      const gpu = await getGpuMetrics()
-      latestMetrics.gpuLoad   = gpu.gpuLoad
-      latestMetrics.gpuTemp   = gpu.gpuTemp
-      latestMetrics.vramUsage = gpu.vramUsage
-    }
-
+    latestMetric = await getSystemMetric()
     broadcastMetrics()
   } catch {
     // ignore transient errors
@@ -398,24 +425,13 @@ async function pollSystemMetrics() {
   }
 }
 
-const DISPLAY_INFO_VALUE_GETTERS = {
-  cpu_usage:  () => latestMetrics.cpuLoad,
-  cpu_temp:   () => latestMetrics.cpuTemp,
-  mem_usage:  () => latestMetrics.memUsage,
-  gpu_usage:  () => latestMetrics.gpuLoad,
-  vram_usage: () => latestMetrics.vramUsage,
-  gpu_temp:   () => latestMetrics.gpuTemp,
-}
 
 function broadcastMetrics() {
   const cfg = getConfig()
   const info = cfg.displayInfo || 'cpu_usage'
-  const getMetric = DISPLAY_INFO_VALUE_GETTERS[info] ?? DISPLAY_INFO_VALUE_GETTERS.cpu_usage
-  const value = getMetric()
-
   ;[viewerWindow].forEach((win) => {
     if (win && !win.isDestroyed()) {
-      win.webContents.send('cpu-load', value)
+      win.webContents.send('system-metric', latestMetric)
     }
   })
 }
@@ -453,11 +469,6 @@ app.on('window-all-closed', () => {
 // IPC handlers
 // ---------------------------------------------------------------------------
 
-ipcMain.handle('get-cpu-load', async () => {
-  const load = await si.currentLoad()
-  return Math.round(load.currentLoad)
-})
-
 ipcMain.handle('get-grating-params', () => gratingParams)
 
 ipcMain.handle('get-display-status', () => ({
@@ -486,6 +497,7 @@ ipcMain.handle('get-system-accent-color', () => {
   try {
     if (process.platform === 'win32' || process.platform === 'darwin') {
       const hex = systemPreferences.getAccentColor()
+      console.log('[system] Accent color (hex):', hex)
       return '#' + hex.slice(0, 6)
     }
   } catch {
@@ -494,7 +506,7 @@ ipcMain.handle('get-system-accent-color', () => {
   return null
 })
 
-ipcMain.handle('get-system-metrics', () => ({ ...latestMetrics }))
+ipcMain.handle('get-system-metric', async () => await getSystemMetric())
 
 ipcMain.handle('close-settings', () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) {

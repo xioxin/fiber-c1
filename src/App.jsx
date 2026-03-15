@@ -16,6 +16,13 @@ import "./App.css";
 const DEFAULT_PRIMARY = '#00e5ff'
 const DEFAULT_SECONDARY = '#b020ff'
 
+
+const RENDER_MODES = [
+  { key: 'single', label: '原始' },
+  { key: 'atlas', label: '40图' },
+  { key: 'interlaced', label: '交织图' },
+]
+
 /** Derive theme colors from a settings object. */
 function resolveThemeColors(theme) {
   if (!theme) return { primary: DEFAULT_PRIMARY, secondary: DEFAULT_SECONDARY }
@@ -77,8 +84,12 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
 }
 
 function App() {
-  const [progress, setProgress] = useState(0);
-  const [renderMode] = useState("interlaced");
+  const [progress, setProgress] = useState({
+    type: 'cpu_usage',
+    value: 0,
+    unit: '%'
+  });
+  const [renderMode, setRenderMode] = useState('interlaced')
   const [gratingParams, setGratingParams] = useState({
     obliquity: LenticularOptics.obliquity,
     lineNumber: LenticularOptics.lineNumber,
@@ -130,8 +141,8 @@ function App() {
 
       if (!isSettings) {
         // Only poll system metrics in the viewer window
-        window.electronAPI.getCpuLoad().then(setProgress);
-        const cleanupCpu = window.electronAPI.onCpuLoad(setProgress);
+        window.electronAPI.getSystemMetric().then(setProgress);
+        const cleanupCpu = window.electronAPI.onSystemMetric(setProgress);
 
         window.electronAPI.getGratingParams().then((params) => {
           if (params) setGratingParams(params);
@@ -153,7 +164,11 @@ function App() {
     } else {
       // Fallback: random values for browser preview
       const tick = () => {
-        setProgress(Math.floor(Math.random() * 96) + 2);
+        setProgress({
+          type: 'cpu_usage',
+          value: Math.floor(Math.random() * 96) + 2,
+          unit: '%'
+        });
       };
       const first = setTimeout(tick, 1200);
       const interval = setInterval(tick, 3500);
@@ -169,21 +184,32 @@ function App() {
     return <SettingsPanel />;
   }
 
-  // Determine display unit for the label
-  const displayUnit = getUnit(settings.language, settings.displayInfo);
-
   return (
     <div className="app-root">
       <Canvas camera={{ position: [0, 0, 6.5], fov: 45 }}>
         <Scene
-          progress={progress}
+          progress={progress.value}
           renderMode={renderMode}
           gratingParams={gratingParams}
           primaryColor={themeColors.primary}
           secondaryColor={themeColors.secondary}
-          unit={displayUnit}
+          unit={progress.unit}
         />
       </Canvas>
+
+      { !isElectron && <div className="debug-switcher" role="group" aria-label="Render mode switcher">
+        {RENDER_MODES.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`debug-btn ${renderMode === item.key ? 'active' : ''}`}
+            onClick={() => setRenderMode(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>}
+
     </div>
   );
 }
