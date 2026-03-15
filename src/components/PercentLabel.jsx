@@ -191,9 +191,8 @@ export function PercentLabel({ progress, primaryColor = '#00e5ff', secondaryColo
   })
 
   return (
-    <Center position={[0, -0, 0]}>
+    <Center key={`${displayValue}${displayUnit}`} position={[0, 0, 0]}>
       <Text3D
-        key={`${displayValue}${displayUnit}`}
         ref={textRef}
         font={fontUrl}
         size={0.58}
