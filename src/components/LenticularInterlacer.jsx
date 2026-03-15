@@ -93,9 +93,9 @@ const tempRotatedOffset = new THREE.Vector3();
 export function LenticularInterlacer({
   focusPoint = [0, 0, 0],
   interlaced = true,
-  obliquity = 0.10516,
-  lineNumber = 19.6401,
-  deviation = 16.25578,
+  slope = 0.10516,
+  interval = 19.6401,
+  x0 = 16.25578,
   thetaDeg = 40.0,
 }) {
   const { gl, size, scene } = useThree();
@@ -131,9 +131,9 @@ export function LenticularInterlacer({
       new THREE.ShaderMaterial({
         uniforms: {
           tDiffuse: { value: atlasTarget.texture },
-          slope: { value: obliquity },
-          interval: { value: lineNumber },
-          x0: { value: deviation },
+          slope: { value: slope },
+          interval: { value: interval },
+          x0: { value: x0 },
         },
         vertexShader: fullScreenVertexShader,
         fragmentShader: buildInterlaceFragmentShader(),
@@ -141,7 +141,7 @@ export function LenticularInterlacer({
         depthWrite: false,
         toneMapped: false,
       }),
-    [atlasTarget.texture, obliquity, lineNumber, deviation],
+    [atlasTarget.texture, slope, interval, x0],
   );
 
   const atlasPreviewMaterial = useMemo(

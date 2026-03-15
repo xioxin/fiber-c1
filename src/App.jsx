@@ -49,7 +49,7 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
       </group>
 
       {/* 3D percentage text */}
-      <group position={[0, 0, 0]} scale={unit == '°C'? 0.8 : 0.9}>
+      <group position={[0, 0, 0]} scale={unit == '°C' ? 0.8 : 0.9}>
         <Suspense fallback={null}>
           <PercentLabel
             progress={progress}
@@ -65,9 +65,9 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
         <LenticularInterlacer
           focusPoint={[0, 0, 0]}
           interlaced={renderMode === "interlaced"}
-          obliquity={gratingParams.obliquity}
-          lineNumber={gratingParams.lineNumber}
-          deviation={gratingParams.deviation}
+          slope={gratingParams.obliquity}
+          interval={gratingParams.lineNumber}
+          x0={gratingParams.deviation}
           thetaDeg={LenticularOptics.thetaDeg}
         />
       )}
