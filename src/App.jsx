@@ -5,10 +5,8 @@ import { DonutProgress } from "./components/DonutProgress";
 import { PercentLabel } from "./components/PercentLabel";
 import { Atmosphere } from "./components/Atmosphere";
 import { LenticularInterlacer } from "./components/LenticularInterlacer";
-import { LenticularOptics } from "./lenticular/config";
 import { SettingsPanel } from "./SettingsPanel";
-import { getUnit } from "./i18n/index.js";
-import { PRESET_COLORS } from "./i18n/index.js";
+import { PRESET_COLORS, t } from './i18n/index.js'
 
 import "./App.css";
 
@@ -75,7 +73,7 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
           slope={gratingParams.obliquity}
           interval={gratingParams.lineNumber}
           x0={gratingParams.deviation}
-          thetaDeg={LenticularOptics.thetaDeg}
+          thetaDeg={40}
         />
       )}
       <OrbitControls enableZoom={false} enablePan={false} />
@@ -90,10 +88,17 @@ function App() {
     unit: '%'
   });
   const [renderMode, setRenderMode] = useState('interlaced')
+
+  window.setRenderMode = (mode) => {
+    if (RENDER_MODES.some(m => m.key === mode)) {
+      setRenderMode(mode);
+    }
+  }
+
   const [gratingParams, setGratingParams] = useState({
-    obliquity: LenticularOptics.obliquity,
-    lineNumber: LenticularOptics.lineNumber,
-    deviation: LenticularOptics.deviation,
+    obliquity: null,
+    lineNumber: null,
+    deviation: null,
   });
   const [settings, setSettings] = useState({
     language: 'zh',
@@ -145,9 +150,11 @@ function App() {
         const cleanupCpu = window.electronAPI.onSystemMetric(setProgress);
 
         window.electronAPI.getGratingParams().then((params) => {
+          console.log('[grating] Initial parameters:', params);
           if (params) setGratingParams(params);
         });
         const cleanupGrating = window.electronAPI.onGratingParams((params) => {
+          console.log('[grating] Updated parameters:', params);
           if (params) setGratingParams(params);
         });
 
@@ -186,6 +193,16 @@ function App() {
 
   return (
     <div className="app-root">
+
+      {!gratingParams?.obliquity && (
+        <div className="no-grating-params">
+          <div className="loading-content">
+            <div className="loading-spinner" />
+            <p>{t(settings.language, 'noGratingParamsTips')}</p>
+          </div>
+        </div>
+      )}
+
       <Canvas camera={{ position: [0, 0, 6.5], fov: 45 }}>
         <Scene
           progress={progress.value}

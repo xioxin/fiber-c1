@@ -6,6 +6,9 @@ export const LANGUAGES = ['zh', 'en']
 
 export const STRINGS = {
   zh: {
+
+    noGratingParamsTips: '请启动 Cubestage / OpenstageAI 主程序以获取光栅参数',
+
     // Tray menu
     tray_settings: '设置',
     tray_copy_calibration: '复制校准信息',
@@ -44,6 +47,7 @@ export const STRINGS = {
   },
 
   en: {
+    noGratingParamsTips: 'Please launch the main Cubestage / OpenstageAI application to obtain grating parameters',
     // Tray menu
     tray_settings: 'Settings',
     tray_copy_calibration: 'Copy Calibration Info',

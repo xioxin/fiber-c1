@@ -32,15 +32,6 @@ const APP_REQUEST_BASE = {
 // State
 // ---------------------------------------------------------------------------
 
-let config = null
-
-// Default grating parameters (used when the platform is unavailable)
-let gratingParams = {
-  deviation: 16.25578,
-  lineNumber: 19.6401,
-  obliquity: 0.10516,
-}
-
 let c1LabelList = []
 let pipeClient = null
 let pipeConnected = false
@@ -55,14 +46,7 @@ let tray = null
 // ---------------------------------------------------------------------------
 
 function getConfig() {
-  if (!config) {
-    config = loadConfig()
-    // Restore saved grating params as fallback for when the platform is offline
-    if (config.gratingParams) {
-      gratingParams = { ...gratingParams, ...config.gratingParams }
-    }
-  }
-  return config
+  return  loadConfig();
 }
 
 /** Deep-merge partial into target (partial values win). */
@@ -89,6 +73,7 @@ function deepMergePartial(target, partial) {
 // ---------------------------------------------------------------------------
 
 function connectToPlatform() {
+  console.log('[pipe] Attempting to connect to platform (attempt #%d)', pipeRetryIndex + 1)
   const pipeName = PIPE_NAMES[pipeRetryIndex % PIPE_NAMES.length]
   const pipePath = getPipePath(pipeName)
   console.log('[pipe] Connecting to', pipePath)
@@ -100,7 +85,7 @@ function connectToPlatform() {
     console.log('[pipe] Connected to', pipeName)
     // NOTE: 'getDeivice' is the exact string used by the platform protocol
     // (the misspelling is intentional and must be preserved for compatibility).
-    sendToPlatform('getDeivice')
+    setTimeout(() => sendToPlatform('getDeivice'), 500)
     setTimeout(() => sendToPlatform('getLabelList'), 1000)
   })
 
@@ -112,7 +97,8 @@ function connectToPlatform() {
     }
   })
 
-  pipeClient.on('error', () => {
+  pipeClient.on('error', (err) => {
+    console.error('[pipe] Connection error:', err)
     pipeConnected = false
     pipeClient = null
     pipeRetryIndex++
@@ -122,12 +108,12 @@ function connectToPlatform() {
   pipeClient.on('close', () => {
     pipeConnected = false
     pipeClient = null
-    setTimeout(connectToPlatform, 3000)
   })
 }
 
 function sendToPlatform(requestType) {
   if (!pipeClient || !pipeConnected) return
+  console.log('[pipe] Sending request:', requestType)
   const request = { ...APP_REQUEST_BASE, request_type: requestType }
   pipeClient.write(JSON.stringify(request))
 }
@@ -165,25 +151,21 @@ function parsePipeData(respJson) {
 
   if (requestType === 'getDeivice' || requestType === 'device') {
     if (responseData.deviation !== undefined) {
-      gratingParams = {
-        deviation: responseData.deviation,
-        lineNumber: responseData.lineNumber,
-        obliquity: responseData.obliquity,
-      }
-      console.log('[pipe] Grating params updated:', gratingParams)
+      console.log('[pipe] Grating params updated:', responseData)
       // Persist the latest grating params so they can be restored on next startup
       const cfg = getConfig()
-      cfg.gratingParams = { ...gratingParams }
+      cfg.gratingParams = { ...responseData }
       saveConfig(cfg)
       broadcastGratingParams()
     }
   }
 }
 
-function broadcastGratingParams() {
-  ;[viewerWindow].forEach((win) => {
+async function broadcastGratingParams() {
+  const config = await getConfig();
+  ;[viewerWindow].forEach( (win) => {
     if (win && !win.isDestroyed()) {
-      win.webContents.send('grating-params', gratingParams)
+      win.webContents.send('grating-params', config.gratingParams)
     }
   })
 }
@@ -443,12 +425,13 @@ function startCpuPolling() {
 // ---------------------------------------------------------------------------
 // App lifecycle
 // ---------------------------------------------------------------------------
-
 app.whenReady().then(() => {
+
   getConfig()
   startCpuPolling()
   connectToPlatform()
   createTray()
+  checkGratingParams();
 
   screen.on('display-added', onDisplayAdded)
   screen.on('display-removed', onDisplayRemoved)
@@ -469,7 +452,15 @@ app.on('window-all-closed', () => {
 // IPC handlers
 // ---------------------------------------------------------------------------
 
-ipcMain.handle('get-grating-params', () => gratingParams)
+ipcMain.handle('get-grating-params', async () => {
+  const config = await getConfig() // ensure config and gratingParams are loaded
+  sendToPlatform('getDeivice')
+  return config.gratingParams || {
+    deviation: null,
+    lineNumber: null,
+    obliquity: null,
+  };
+})
 
 ipcMain.handle('get-display-status', () => ({
   connected: findC1Display() !== null,
@@ -513,3 +504,19 @@ ipcMain.handle('close-settings', () => {
     settingsWindow.close()
   }
 })
+
+
+function checkGratingParams() {
+  setTimeout(async () => {
+    try {
+      const ok = pipeClient && pipeConnected;
+      if (!ok) { return }
+      const config = await getConfig()
+      if (!config.gratingParams || !config.gratingParams.deviation) {
+        sendToPlatform('getDeivice')
+      }
+    } finally {
+      checkGratingParams();
+    }
+  }, 3000);
+}

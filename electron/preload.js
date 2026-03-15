@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemMetric: async () => await ipcRenderer.invoke('get-system-metric'),
 
   // ---- Grating parameters (from Cubestage / OpenstageAI platform) ----
-  getGratingParams: () => ipcRenderer.invoke('get-grating-params'),
+  getGratingParams: async () => await ipcRenderer.invoke('get-grating-params'),
   onGratingParams: (callback) => {
     const handler = (_event, params) => callback(params)
     ipcRenderer.on('grating-params', handler)

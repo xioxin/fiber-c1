@@ -8,6 +8,7 @@ import path from 'path'
 // ---------------------------------------------------------------------------
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json')
+console.log('[store] Config file path:', CONFIG_FILE)
 
 const DEFAULTS = {
   language: 'zh',                // 'zh' | 'en'
@@ -19,9 +20,9 @@ const DEFAULTS = {
     secondaryColor: '#b020ff',
   },
   gratingParams: {
-    deviation: 16.25578,
-    lineNumber: 19.6401,
-    obliquity: 0.10516,
+    deviation: null,
+    lineNumber: null,
+    obliquity: null,
   },
 }
 

@@ -84,3 +84,49 @@ flex: 1;
 min-width: 120px;
 }
 }
+
+.no-grating-params {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+display: flex;
+align-items: center;
+justify-content: center;
+background: rgba(0, 0, 0, 0.6);
+z-index: 5;
+color: #fff;
+}
+
+.loading-content {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 16px;
+color: #fff;
+font-size: 100px;
+font-weight: bold;
+background: none;
+}
+
+.loading-spinner {
+width: 200px;
+height: 200px;
+border: 20px solid rgba(255, 255, 255, 0.3);
+border-top-color: #fff;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+0% {
+transform: rotate(0deg);
+}
+100% {
+transform: rotate(360deg);
+}
+}
+.loading-content p {
+    padding: 40px 80px;
+}

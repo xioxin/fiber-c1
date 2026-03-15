@@ -9,9 +9,3 @@ export const ViewCount = ImgCountX * ImgCountY
 export const AtlasWidth = ImgCountX * SubWidth
 export const AtlasHeight = ImgCountY * SubHeight
 
-export const LenticularOptics = {
-  obliquity: 0.10516, // Slope
-  lineNumber: 19.6401, // Interval
-  deviation: 16.25578, // X0
-  thetaDeg: 40,
-}
