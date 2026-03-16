@@ -104,7 +104,6 @@ export function LenticularInterlacer({
       { length: ViewCount },
       () => {
         const cam = new THREE.PerspectiveCamera(45, SubWidth / SubHeight, 0.1, 100);
-        cam.matrixAutoUpdate = false;
         return cam;
       },
     );
@@ -204,7 +203,9 @@ export function LenticularInterlacer({
     tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2]);
     
     const distanceToFocus = mainCamera.position.distanceTo(tempTarget);
+    
     const baseline = 2 * distanceToFocus * Math.tan(THREE.MathUtils.degToRad(thetaDeg) / 2);
+
     const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(mainCamera.quaternion);
 
     for (let i = 0; i < ViewCount; i += 1) {
