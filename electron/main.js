@@ -38,6 +38,7 @@ let pipeConnected = false
 let pipeRetryIndex = 0
 
 let viewerWindow = null
+let viewerWindowDisplayId = null
 let settingsWindow = null
 let tray = null
 
@@ -212,9 +213,15 @@ function onDisplayAdded(_event, display) {
 
 function onDisplayRemoved(_event, display) {
   console.log('[screen] display-removed:', display.id, display.label || '')
-  if (viewerWindow && !viewerWindow.isDestroyed()) {
-    viewerWindow.close()
-    viewerWindow = null
+  if(display.id === viewerWindowDisplayId) {
+    if (viewerWindow && !viewerWindow.isDestroyed()) {
+      viewerWindow.close()
+      viewerWindow = null
+    }
+  } else {
+    setTimeout(() => {
+      viewerWindow.focus();
+    }, 1000)
   }
   broadcastDisplayStatus(false, display.id)
 }
@@ -229,6 +236,7 @@ function createViewerWindow(display) {
   const { x, y, width, height } = display.bounds
   console.log('[viewer] Creating viewer window at', x, y, width, height)
 
+  viewerWindowDisplayId = display.id
   viewerWindow = new BrowserWindow({
     x,
     y,
