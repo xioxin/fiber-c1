@@ -72,7 +72,6 @@ function buildAtlasPreviewFragmentShader() {
     varying vec2 vUV;
     uniform sampler2D tDiffuse;
     void main() {
-      // Keep native atlas orientation from render target
       gl_FragColor = texture2D(tDiffuse, vUV);
     }
   `;
@@ -87,8 +86,7 @@ const fullScreenVertexShader = /* glsl */ `
 `;
 
 const tempTarget = new THREE.Vector3();
-const tempOffset = new THREE.Vector3();
-const tempRotatedOffset = new THREE.Vector3();
+const tempRight = new THREE.Vector3();
 
 export function LenticularInterlacer({
   focusPoint = [0, 0, 0],
@@ -104,7 +102,11 @@ export function LenticularInterlacer({
   if (viewCamerasRef.current === null) {
     viewCamerasRef.current = Array.from(
       { length: ViewCount },
-      () => new THREE.PerspectiveCamera(45, SubWidth / SubHeight, 0.1, 100),
+      () => {
+        const cam = new THREE.PerspectiveCamera(45, SubWidth / SubHeight, 0.1, 100);
+        cam.matrixAutoUpdate = false;
+        return cam;
+      },
     );
   }
 
@@ -200,28 +202,51 @@ export function LenticularInterlacer({
     const prevScissorTest = gl.getScissorTest();
 
     tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2]);
-    tempOffset.copy(mainCamera.position).sub(tempTarget);
+    const focusDistance = mainCamera.position.distanceTo(tempTarget);
+
+    tempRight
+      .set(1, 0, 0)
+      .applyQuaternion(mainCamera.quaternion)
+      .normalize();
 
     const thetaRad = THREE.MathUtils.degToRad(thetaDeg);
-    const half = 0.5;
+    const totalShift = 2.0 * focusDistance * Math.tan(thetaRad / 2.0);
+
+    const fov = mainCamera.fov;
+    const near = mainCamera.near;
+    const far = mainCamera.far;
+    const zoom = mainCamera.zoom;
+    const aspect = SubWidth / SubHeight;
+
+    const top = (near * Math.tan(THREE.MathUtils.degToRad(fov * 0.5))) / zoom;
+    const bottom = -top;
+    const halfWidth = top * aspect;
 
     for (let i = 0; i < ViewCount; i += 1) {
       const cam = viewCameras[i];
-      const t = ViewCount <= 1 ? 0 : i / (ViewCount - 1);
-      const yaw = (t - half) * thetaRad;
 
-      tempRotatedOffset.copy(tempOffset).applyAxisAngle(mainCamera.up, yaw);
+      // t ∈ [-0.5, +0.5]，表示当前视角在总范围中的归一化位置
+      const t = ViewCount <= 1 ? 0 : i / (ViewCount - 1) - 0.5;
 
-      cam.position.copy(tempTarget).add(tempRotatedOffset);
+      // 当前相机相对于主相机的水平偏移量（世界坐标）
+      const shift = t * totalShift;
+
+      cam.position.copy(mainCamera.position);
+      cam.position.addScaledVector(tempRight, shift);
+
+      cam.quaternion.copy(mainCamera.quaternion);
       cam.up.copy(mainCamera.up);
-      cam.fov = mainCamera.fov;
-      cam.near = mainCamera.near;
-      cam.far = mainCamera.far;
-      cam.zoom = mainCamera.zoom;
-      cam.aspect = SubWidth / SubHeight;
-      cam.lookAt(tempTarget);
-      cam.updateProjectionMatrix();
-      cam.updateMatrixWorld();
+
+      const shiftOnNear = shift * near / focusDistance;
+
+      const left = -halfWidth + shiftOnNear;
+      const right = halfWidth + shiftOnNear;
+
+      cam.projectionMatrix.makePerspective(left, right, top, bottom, near, far);
+      cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+
+      cam.updateMatrix();
+      cam.updateMatrixWorld(true);
     }
 
     gl.setRenderTarget(atlasTarget);
