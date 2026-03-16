@@ -25,7 +25,7 @@ const APP_REQUEST_BASE = {
   app_id: 'donut_monitor_app',
   app_key: 'donut_monitor_key',
   app_secret: 'donut_monitor_secret',
-  app_version: '1.0.0',
+  app_version: '1.0.1',
 }
 
 // ---------------------------------------------------------------------------
