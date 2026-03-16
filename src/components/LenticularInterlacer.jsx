@@ -202,51 +202,38 @@ export function LenticularInterlacer({
     const prevScissorTest = gl.getScissorTest();
 
     tempTarget.set(focusPoint[0], focusPoint[1], focusPoint[2]);
-    const focusDistance = mainCamera.position.distanceTo(tempTarget);
-
-    tempRight
-      .set(1, 0, 0)
-      .applyQuaternion(mainCamera.quaternion)
-      .normalize();
-
-    const thetaRad = THREE.MathUtils.degToRad(thetaDeg);
-    const totalShift = 2.0 * focusDistance * Math.tan(thetaRad / 2.0);
-
-    const fov = mainCamera.fov;
-    const near = mainCamera.near;
-    const far = mainCamera.far;
-    const zoom = mainCamera.zoom;
-    const aspect = SubWidth / SubHeight;
-
-    const top = (near * Math.tan(THREE.MathUtils.degToRad(fov * 0.5))) / zoom;
-    const bottom = -top;
-    const halfWidth = top * aspect;
+    
+    const distanceToFocus = mainCamera.position.distanceTo(tempTarget);
+    const baseline = 2 * distanceToFocus * Math.tan(THREE.MathUtils.degToRad(thetaDeg) / 2);
+    const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(mainCamera.quaternion);
 
     for (let i = 0; i < ViewCount; i += 1) {
       const cam = viewCameras[i];
+      const t = ViewCount <= 1 ? 0 : i / (ViewCount - 1);
+      
+      const offsetX = (t - 0.5) * baseline;
 
-      // t ∈ [-0.5, +0.5]，表示当前视角在总范围中的归一化位置
-      const t = ViewCount <= 1 ? 0 : i / (ViewCount - 1) - 0.5;
-
-      // 当前相机相对于主相机的水平偏移量（世界坐标）
-      const shift = t * totalShift;
-
-      cam.position.copy(mainCamera.position);
-      cam.position.addScaledVector(tempRight, shift);
-
+      cam.position.copy(mainCamera.position).addScaledVector(rightDir, offsetX);
       cam.quaternion.copy(mainCamera.quaternion);
       cam.up.copy(mainCamera.up);
+      
+      cam.fov = mainCamera.fov;
+      cam.near = mainCamera.near;
+      cam.far = mainCamera.far;
+      cam.zoom = mainCamera.zoom;
+      cam.aspect = SubWidth / SubHeight;
+      cam.updateProjectionMatrix();
 
-      const shiftOnNear = shift * near / focusDistance;
+      const eyeSepOnProjection = offsetX * cam.near / distanceToFocus;
+      const ymax = (cam.near * Math.tan(THREE.MathUtils.degToRad(cam.fov * 0.5))) / cam.zoom;
+      
+      const xmin = -ymax * cam.aspect - eyeSepOnProjection;
+      const xmax =  ymax * cam.aspect - eyeSepOnProjection;
 
-      const left = -halfWidth + shiftOnNear;
-      const right = halfWidth + shiftOnNear;
-
-      cam.projectionMatrix.makePerspective(left, right, top, bottom, near, far);
-      cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
-
-      cam.updateMatrix();
-      cam.updateMatrixWorld(true);
+      cam.projectionMatrix.elements[0] = (2 * cam.near) / (xmax - xmin);
+      cam.projectionMatrix.elements[8] = (xmax + xmin) / (xmax - xmin);
+      
+      cam.updateMatrixWorld();
     }
 
     gl.setRenderTarget(atlasTarget);
@@ -266,7 +253,6 @@ export function LenticularInterlacer({
     }
 
     gl.setScissorTest(false);
-
     gl.setRenderTarget(null);
     gl.setViewport(0, 0, size.width, size.height);
     gl.clear(true, true, true);
