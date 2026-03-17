@@ -328,8 +328,20 @@ function rebuildTrayMenu() {
   const lang = cfg.language || 'zh'
 
   const strings = {
-    zh: { settings: '设置', copyCalib: '复制校准信息', github: 'GitHub', exit: '退出' },
-    en: { settings: 'Settings', copyCalib: 'Copy Calibration Info', github: 'GitHub', exit: 'Exit' },
+    zh: { 
+      settings: '设置', 
+      copyCalib: '复制校准信息', 
+      github: 'GitHub', 
+      exit: '退出',
+      noCalib: '暂无校准信息',
+     },
+    en: { 
+      settings: 'Settings', 
+      copyCalib: 'Copy Calibration Info', 
+      github: 'GitHub', 
+      exit: 'Exit',
+      noCalib: 'No calibration info',
+     },
   }
   const s = strings[lang] || strings.zh
 
@@ -337,7 +349,24 @@ function rebuildTrayMenu() {
     { label: s.settings, click: () => openSettingsWindow() },
     {
       label: s.copyCalib,
-      click: () => clipboard.writeText(JSON.stringify(gratingParams, null, 2)),
+      click: () => {
+        const cfg = getConfig()
+        if (cfg.gratingParams && cfg.gratingParams.deviation) {
+          const { deviation, lineNumber, obliquity } = cfg.gratingParams
+          const json = JSON.stringify({ 
+            x0: deviation, 
+            interval: lineNumber, 
+            slope: obliquity 
+          }, null, 2)
+          clipboard.writeText(json)
+        } else {
+          app.showMessageBox({
+            type: 'info',
+            title: s.copyCalib,
+            message: s.noCalib,
+          });
+        }
+      }
     },
     { label: s.github, click: () => shell.openExternal('https://github.com/xioxin/fiber-c1') },
     { label: 'DevTools', click: () => {
