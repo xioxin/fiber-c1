@@ -39,4 +39,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ---- Extended system metrics ----
   getSystemMetric: () => ipcRenderer.invoke('get-system-metric'),
+
+  getVersion: () => ipcRenderer.invoke('get-version'),
 })

@@ -26,6 +26,8 @@ const DEFAULT_SETTINGS = {
 export function SettingsPanel() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [saving, setSaving] = useState(false)
+  const [version, setVersion] = useState('')
+
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
 
   // Load settings on mount
@@ -33,6 +35,9 @@ export function SettingsPanel() {
     if (isElectron) {
       window.electronAPI.getSettings().then((s) => {
         if (s) setSettings(s)
+      })
+      window.electronAPI.getVersion().then((v) => {
+        setVersion(v)
       })
       // Subscribe to settings updates
       const cleanupOnSettings = window.electronAPI.onSettingsUpdated((s) => {
@@ -241,6 +246,9 @@ export function SettingsPanel() {
           </div>
         </section>
       </div>
+
+
+            <div className="sp-version">Version: {version}</div>
 
       {saving && <div className="sp-saving-indicator" />}
     </div>

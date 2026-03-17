@@ -9,7 +9,7 @@ import { Stack } from 'three/src/nodes/TSL.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = process.env.NODE_ENV === 'development'
-
+console.log('App version:', app.getVersion())
 // ---------------------------------------------------------------------------
 // Named-pipe configuration for Cubestage / OpenstageAI platform
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ const APP_REQUEST_BASE = {
   app_id: 'donut_monitor_app',
   app_key: 'donut_monitor_key',
   app_secret: 'donut_monitor_secret',
-  app_version: '1.0.2',
+  app_version: app.getVersion(),
 }
 
 // ---------------------------------------------------------------------------
@@ -282,12 +282,13 @@ function openSettingsWindow() {
 
   settingsWindow = new BrowserWindow({
     width: 520,
-    height: 710,
+    height: 720,
     resizable: false,
     fullscreen: false,
     frame: false,
     backgroundColor: '#0d0d1a',
     title: 'Settings',
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -334,6 +335,7 @@ function rebuildTrayMenu() {
       github: 'GitHub', 
       exit: '退出',
       noCalib: '暂无校准信息',
+      versionIs: '版本: ' + app.getVersion(),
      },
     en: { 
       settings: 'Settings', 
@@ -341,6 +343,7 @@ function rebuildTrayMenu() {
       github: 'GitHub', 
       exit: 'Exit',
       noCalib: 'No calibration info',
+        versionIs: 'Version: ' + app.getVersion(),
      },
   }
   const s = strings[lang] || strings.zh
@@ -378,6 +381,8 @@ function rebuildTrayMenu() {
         }
       });
     } },
+    { type: 'separator' },
+    { label: s.versionIs, enabled: false },
     { type: 'separator' },
     { label: s.exit, click: () => app.quit() },
   ])
@@ -566,6 +571,7 @@ ipcMain.handle('get-system-accent-color', () => {
 })
 
 ipcMain.handle('get-system-metric', async () => await getSystemMetric())
+ipcMain.handle('get-version', () => app.getVersion())
 
 ipcMain.handle('close-settings', () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
