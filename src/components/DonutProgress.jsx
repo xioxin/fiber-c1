@@ -163,7 +163,7 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
   const groupRef    = useRef()
   const arcGroupRef = useRef()
   const endCapRef   = useRef()
-  const animRef     = useRef({ current: progress / 100, target: progress / 100 })
+  const animRef     = useRef({ current: progress, target: progress })
   const progressRef = useRef(progress)
   progressRef.current = progress
   const primaryColorRef = useRef(primaryColor)
@@ -178,7 +178,7 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
       new FullCircle(RADIUS), PATH_SEGS, TUBE_RADIUS, RADIAL_SEGS, false,
     )
     // Set initial drawRange immediately so there's no full-circle flash
-    geom.setDrawRange(0, Math.ceil(PATH_SEGS * (progress / 100)) * RADIAL_SEGS * 6)
+    geom.setDrawRange(0, Math.ceil(PATH_SEGS * (progress)) * RADIAL_SEGS * 6)
     return geom
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -206,7 +206,7 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
   const uniforms = useMemo(() => ({
     colorA:   { value: new THREE.Color(primaryColor) },
     colorB:   { value: new THREE.Color(secondaryColor) },
-    progress: { value: progress / 100 },
+    progress: { value: progress },
     ...orbUniforms,
     // Colors are intentionally excluded from deps: uniform.value objects are
     // mutated each frame in useFrame via primaryColorRef/secondaryColorRef.
@@ -232,7 +232,7 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
   }), [orbUniforms])
 
   useFrame(({ clock }) => {
-    animRef.current.target = progressRef.current / 100
+    animRef.current.target = progressRef.current
     const { current, target } = animRef.current
     const next = current + (target - current) * 0.04
     animRef.current.current = next
@@ -290,7 +290,7 @@ export function DonutProgress({ progress, primaryColor = '#00e5ff', secondaryCol
   // Start cap position: 12 o'clock = (0, RADIUS, 0)
   const startCapPos = [0, RADIUS, 0]
   // Initial end cap position based on initial progress
-  const initAngle = Math.PI / 2 - 2 * Math.PI * (progress / 100)
+  const initAngle = Math.PI / 2 - 2 * Math.PI * (progress)
   const initEndCapPos = [Math.cos(initAngle) * RADIUS, Math.sin(initAngle) * RADIUS, 0]
 
   return (

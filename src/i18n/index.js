@@ -42,9 +42,15 @@ export const STRINGS = {
     info_vram_usage: '显存占用率',
     info_gpu_temp: '显卡温度',
 
+    // Temperature unit section
+    section_temperature_unit: '温度单位',
+    temp_unit_celsius: '摄氏度 (°C)',
+    temp_unit_fahrenheit: '华氏度 (°F)',
+
     // Units
     unit_percent: '%',
     unit_celsius: '°C',
+    unit_fahrenheit: '°F',
   },
 
   en: {
@@ -82,9 +88,15 @@ export const STRINGS = {
     info_vram_usage: 'VRAM Usage',
     info_gpu_temp: 'GPU Temperature',
 
+    // Temperature unit section
+    section_temperature_unit: 'Temperature Unit',
+    temp_unit_celsius: 'Celsius (°C)',
+    temp_unit_fahrenheit: 'Fahrenheit (°F)',
+
     // Units
     unit_percent: '%',
     unit_celsius: '°C',
+    unit_fahrenheit: '°F',
   },
 }
 
@@ -95,10 +107,11 @@ export function t(lang, key) {
 }
 
 /** Return the unit string for a given displayInfo type. */
-export function getUnit(lang, displayInfo) {
+export function getUnit(lang, displayInfo, temperatureUnit = 'celsius') {
   const dict = STRINGS[lang] || STRINGS.en
   const isTemp = displayInfo === 'cpu_temp' || displayInfo === 'gpu_temp'
-  return isTemp ? dict.unit_celsius : dict.unit_percent
+  if (!isTemp) return dict.unit_percent
+  return temperatureUnit === 'fahrenheit' ? dict.unit_fahrenheit : dict.unit_celsius
 }
 
 /** Preset gradient color pairs [primaryColor, secondaryColor]. */

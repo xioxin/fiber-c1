@@ -282,7 +282,7 @@ function openSettingsWindow() {
 
   settingsWindow = new BrowserWindow({
     width: 520,
-    height: 680,
+    height: 710,
     resizable: false,
     fullscreen: false,
     frame: false,
@@ -340,9 +340,15 @@ function rebuildTrayMenu() {
       click: () => clipboard.writeText(JSON.stringify(gratingParams, null, 2)),
     },
     { label: s.github, click: () => shell.openExternal('https://github.com/xioxin/fiber-c1') },
-    { label: 'DevTools', click: () => viewerWindow.webContents.openDevTools({
-        mode: 'detach',
-    }) },
+    { label: 'DevTools', click: () => {
+      [viewerWindow, settingsWindow].forEach((win) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.openDevTools({
+            mode: 'detach',
+          });
+        }
+      });
+    } },
     { type: 'separator' },
     { label: s.exit, click: () => app.quit() },
   ])
@@ -399,13 +405,31 @@ const DISPLAY_INFO_VALUE_GETTERS = {
   }
 }
 
+function isTemperatureInfoType(infoType) {
+  return infoType === 'cpu_temp' || infoType === 'gpu_temp'
+}
+
+function celsiusToFahrenheit(value) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return value
+  return Math.round((value * 9) / 5 + 32)
+}
+
 
 async function getSystemMetric() {
   const cfg = getConfig()
   const info = cfg.displayInfo || 'cpu_usage'
   const getMetric = DISPLAY_INFO_VALUE_GETTERS[info] ?? DISPLAY_INFO_VALUE_GETTERS.cpu_usage
-  const value = await getMetric()
-  return { type: info, value, unit: info.includes('temp') ? '°C' : '%' }
+  const rawValue = await getMetric()
+  const isTemp = isTemperatureInfoType(info)
+  const temperatureUnit = cfg.temperatureUnit === 'fahrenheit' ? 'fahrenheit' : 'celsius'
+  const value = isTemp && temperatureUnit === 'fahrenheit'
+    ? celsiusToFahrenheit(rawValue)
+    : rawValue
+  const unit = isTemp
+    ? (temperatureUnit === 'fahrenheit' ? '°F' : '°C')
+    : '%'
+  const maxValue = isTemp ? (temperatureUnit === 'fahrenheit' ? 212 : 100) : 100;
+  return { type: info, value, unit, maxValue }
 }
 
 

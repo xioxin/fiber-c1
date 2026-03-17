@@ -13,6 +13,7 @@ console.log('[store] Config file path:', CONFIG_FILE)
 const DEFAULTS = {
   language: 'auto',                // 'auto' | 'zh' | 'en'
   displayInfo: 'cpu_usage',      // 'cpu_usage'|'cpu_temp'|'mem_usage'|'gpu_usage'|'vram_usage'|'gpu_temp'
+  temperatureUnit: 'celsius',    // 'celsius' | 'fahrenheit'
   theme: {
     mode: 'preset',              // 'system' | 'preset' | 'custom'
     presetIndex: 0,

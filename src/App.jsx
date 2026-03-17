@@ -30,7 +30,7 @@ function resolveThemeColors(theme) {
   }
 }
 
-function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryColor, unit }) {
+function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryColor, unit, maxValue }) {
   return (
     <>
       <color attach="background" args={["#000000"]} />
@@ -47,14 +47,14 @@ function Scene({ progress, renderMode, gratingParams, primaryColor, secondaryCol
       {/* Donut progress ring */}
       <group position={[0, 0, 0]} scale={0.8}>
         <DonutProgress
-          progress={progress}
+          progress={progress / maxValue}
           primaryColor={primaryColor}
           secondaryColor={secondaryColor}
         />
       </group>
 
       {/* 3D percentage text */}
-      <group position={[0, 0, 0]} scale={unit == '°C' ? 0.8 : 0.9}>
+      <group position={[0, 0, 0]} scale={unit === '°C' || unit === '°F' ? 0.8 : 0.9}>
         <Suspense fallback={null}>
           <PercentLabel
             progress={progress}
@@ -85,7 +85,8 @@ function App() {
   const [progress, setProgress] = useState({
     type: 'cpu_usage',
     value: 0,
-    unit: '%'
+    unit: '%',
+    maxValue: 100,
   });
   const [renderMode, setRenderMode] = useState('interlaced')
 
@@ -103,6 +104,7 @@ function App() {
   const [settings, setSettings] = useState({
     language: 'auto',
     displayInfo: 'cpu_usage',
+    temperatureUnit: 'celsius',
     theme: {
       mode: 'preset',
       presetIndex: 0,
@@ -174,6 +176,7 @@ function App() {
         setProgress({
           type: 'cpu_usage',
           value: Math.floor(Math.random() * 96) + 2,
+          maxValue: 100,
           unit: '%'
         });
       };
@@ -206,6 +209,7 @@ function App() {
       <Canvas camera={{ position: [0, 0, 6.5], fov: 45 }}>
         <Scene
           progress={progress.value}
+          maxValue={progress.maxValue}
           renderMode={renderMode}
           gratingParams={gratingParams}
           primaryColor={themeColors.primary}

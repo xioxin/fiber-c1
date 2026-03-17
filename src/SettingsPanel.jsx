@@ -14,6 +14,7 @@ const DISPLAY_INFO_TYPES = [
 const DEFAULT_SETTINGS = {
   language: 'auto',
   displayInfo: 'cpu_usage',
+  temperatureUnit: 'celsius',
   theme: {
     mode: 'preset',
     presetIndex: 0,
@@ -30,7 +31,7 @@ export function SettingsPanel() {
   // Load settings on mount
   useEffect(() => {
     if (isElectron) {
-      const cleanupGetSettings = window.electronAPI.getSettings().then((s) => {
+      window.electronAPI.getSettings().then((s) => {
         if (s) setSettings(s)
       })
       // Subscribe to settings updates
@@ -38,7 +39,6 @@ export function SettingsPanel() {
         if (s) setSettings(s)
       });
       return () => {
-        if (cleanupGetSettings) cleanupGetSettings()
         if (cleanupOnSettings) cleanupOnSettings()
       }
     }
@@ -95,6 +95,9 @@ export function SettingsPanel() {
   const themeMode = settings.theme?.mode || 'preset'
   const primaryColor = settings.theme?.primaryColor || '#00e5ff'
   const secondaryColor = settings.theme?.secondaryColor || '#b020ff'
+  const temperatureUnit = settings.temperatureUnit || 'celsius'
+  const temperatureUnitKey =
+    temperatureUnit === 'fahrenheit' ? 'unit_fahrenheit' : 'unit_celsius'
 
   return (
     <div className="sp-root">
@@ -207,8 +210,6 @@ export function SettingsPanel() {
           <h3 className="sp-section-title">{t(lang, 'section_display_info')}</h3>
           <div className="sp-info-grid">
             {DISPLAY_INFO_TYPES.map((type) => {
-              const isTemp = type === 'cpu_temp' || type === 'gpu_temp'
-              const unit = isTemp ? t(lang, 'unit_celsius') : t(lang, 'unit_percent')
               return (
                 <button
                   key={type}
@@ -220,6 +221,23 @@ export function SettingsPanel() {
                 </button>
               )
             })}
+          </div>
+        </section>
+
+        {/* Temperature unit section */}
+        <section className="sp-section">
+          <h3 className="sp-section-title">{t(lang, 'section_temperature_unit')}</h3>
+          <div className="sp-row">
+            {['celsius', 'fahrenheit'].map((unit) => (
+              <button
+                key={unit}
+                type="button"
+                className={`sp-btn ${temperatureUnit === unit ? 'active' : ''}`}
+                onClick={() => updateSettings({ temperatureUnit: unit })}
+              >
+                {t(lang, `temp_unit_${unit}`)}
+              </button>
+            ))}
           </div>
         </section>
       </div>
