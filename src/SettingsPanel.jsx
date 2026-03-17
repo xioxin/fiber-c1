@@ -12,7 +12,7 @@ const DISPLAY_INFO_TYPES = [
 ]
 
 const DEFAULT_SETTINGS = {
-  language: 'zh',
+  language: 'auto',
   displayInfo: 'cpu_usage',
   theme: {
     mode: 'preset',
@@ -30,13 +30,21 @@ export function SettingsPanel() {
   // Load settings on mount
   useEffect(() => {
     if (isElectron) {
-      window.electronAPI.getSettings().then((s) => {
+      const cleanupGetSettings = window.electronAPI.getSettings().then((s) => {
         if (s) setSettings(s)
       })
+      // Subscribe to settings updates
+      const cleanupOnSettings = window.electronAPI.onSettingsUpdated((s) => {
+        if (s) setSettings(s)
+      });
+      return () => {
+        if (cleanupGetSettings) cleanupGetSettings()
+        if (cleanupOnSettings) cleanupOnSettings()
+      }
     }
   }, [isElectron])
 
-  const lang = settings.language || 'zh'
+  const lang = settings.currentLanguage || 'en'
 
   const updateSettings = useCallback(
     async (patch) => {
@@ -102,7 +110,7 @@ export function SettingsPanel() {
         <section className="sp-section">
           <h3 className="sp-section-title">{t(lang, 'section_language')}</h3>
           <div className="sp-row">
-            {['zh', 'en'].map((l) => (
+            {['auto', 'zh', 'en'].map((l) => (
               <button
                 key={l}
                 type="button"

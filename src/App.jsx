@@ -101,7 +101,7 @@ function App() {
     deviation: null,
   });
   const [settings, setSettings] = useState({
-    language: 'zh',
+    language: 'auto',
     displayInfo: 'cpu_usage',
     theme: {
       mode: 'preset',
@@ -198,7 +198,7 @@ function App() {
         <div className="no-grating-params">
           <div className="loading-content">
             <div className="loading-spinner" />
-            <p>{t(settings.language, 'noGratingParamsTips')}</p>
+            <p>{t(settings.currentLanguage, 'noGratingParamsTips')}</p>
           </div>
         </div>
       )}

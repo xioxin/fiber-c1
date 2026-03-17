@@ -7,7 +7,7 @@ export const LANGUAGES = ['zh', 'en']
 export const STRINGS = {
   zh: {
 
-    noGratingParamsTips: '请启动 Cubestage / OpenstageAI 主程序以获取光栅参数',
+    noGratingParamsTips: '请启动 OpenstageAI 主程序以获取光栅参数',
 
     // Tray menu
     tray_settings: '设置',
@@ -23,6 +23,7 @@ export const STRINGS = {
     section_language: '语言',
     lang_zh: '中文',
     lang_en: 'English',
+    lang_auto: '自动',
 
     // Theme section
     section_theme: '主题色',
@@ -47,7 +48,7 @@ export const STRINGS = {
   },
 
   en: {
-    noGratingParamsTips: 'Please launch the main Cubestage / OpenstageAI application to obtain grating parameters',
+    noGratingParamsTips: 'Please launch the main Cubestage application to obtain grating parameters',
     // Tray menu
     tray_settings: 'Settings',
     tray_copy_calibration: 'Copy Calibration Info',
@@ -62,6 +63,7 @@ export const STRINGS = {
     section_language: 'Language',
     lang_zh: '中文',
     lang_en: 'English',
+    lang_auto: 'Auto',
 
     // Theme section
     section_theme: 'Theme Color',
@@ -88,13 +90,13 @@ export const STRINGS = {
 
 /** Resolve a translation key for the given language. Falls back to the key itself. */
 export function t(lang, key) {
-  const dict = STRINGS[lang] || STRINGS.zh
+  const dict = STRINGS[lang] || STRINGS.en
   return dict[key] ?? STRINGS.zh[key] ?? key
 }
 
 /** Return the unit string for a given displayInfo type. */
 export function getUnit(lang, displayInfo) {
-  const dict = STRINGS[lang] || STRINGS.zh
+  const dict = STRINGS[lang] || STRINGS.en
   const isTemp = displayInfo === 'cpu_temp' || displayInfo === 'gpu_temp'
   return isTemp ? dict.unit_celsius : dict.unit_percent
 }

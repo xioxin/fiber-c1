@@ -5,6 +5,7 @@ import net from 'net'
 import si from 'systeminformation'
 import { getCpuTemperature, getGpuMetrics } from './metrics.js'
 import { load as loadConfig, save as saveConfig } from './store.js'
+import { Stack } from 'three/src/nodes/TSL.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = process.env.NODE_ENV === 'development'
@@ -25,7 +26,7 @@ const APP_REQUEST_BASE = {
   app_id: 'donut_monitor_app',
   app_key: 'donut_monitor_key',
   app_secret: 'donut_monitor_secret',
-  app_version: '1.0.1',
+  app_version: '1.0.2',
 }
 
 // ---------------------------------------------------------------------------
@@ -47,7 +48,13 @@ let tray = null
 // ---------------------------------------------------------------------------
 
 function getConfig() {
-  return  loadConfig();
+  const config = loadConfig();
+  if(!config.language || config.language === 'auto'){
+    config.currentLanguage = app.getLocale().startsWith('zh') ? 'zh' : 'en'
+  } else {
+    config.currentLanguage = config.language
+  }
+  return config;
 }
 
 /** Deep-merge partial into target (partial values win). */
@@ -219,9 +226,10 @@ function onDisplayRemoved(_event, display) {
       viewerWindow = null
     }
   } else {
+    // Prevent the main screen window from being moved to the C1 screen and blocking the view.
     setTimeout(() => {
       viewerWindow.focus();
-    }, 1000)
+    }, 5000)
   }
   broadcastDisplayStatus(false, display.id)
 }

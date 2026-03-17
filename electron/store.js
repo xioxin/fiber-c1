@@ -11,7 +11,7 @@ const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json')
 console.log('[store] Config file path:', CONFIG_FILE)
 
 const DEFAULTS = {
-  language: 'zh',                // 'zh' | 'en'
+  language: 'auto',                // 'auto' | 'zh' | 'en'
   displayInfo: 'cpu_usage',      // 'cpu_usage'|'cpu_temp'|'mem_usage'|'gpu_usage'|'vram_usage'|'gpu_temp'
   theme: {
     mode: 'preset',              // 'system' | 'preset' | 'custom'
