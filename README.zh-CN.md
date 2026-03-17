@@ -80,9 +80,6 @@ fiber-c1/
     ├── SettingsPanel.jsx # 设置窗口（语言、主题、展示信息选择）
     ├── i18n/index.js     # 中英文字符串与单位定义
     │
-    ├── lenticular/
-    │   └── config.js     # ← 显示屏常量与默认光栅参数
-    │
     └── components/
         ├── LenticularInterlacer.jsx  # ← 核心：多视角渲染 + 光栅交织合成
         ├── DonutProgress.jsx         # 动态圆环进度条

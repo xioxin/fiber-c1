@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import {
-  ImgCountX,
-  ImgCountY,
-  OutPutSizeX,
-  OutPutSizeY,
-  SubWidth,
-  SubHeight,
-  ViewCount,
-  AtlasWidth,
-  AtlasHeight,
-} from "../lenticular/config";
+
+export const ImgCountX = 8 // Horizontal frame count
+export const ImgCountY = 5 // Vertical frame count
+export const OutPutSizeX = 1440 // Physical lenticular display width
+export const OutPutSizeY = 2560 // Physical lenticular display height
+export const SubWidth = 450 // Single-view render width
+export const SubHeight = 800 // Single-view render height
+
+export const ViewCount = ImgCountX * ImgCountY
+export const AtlasWidth = ImgCountX * SubWidth
+export const AtlasHeight = ImgCountY * SubHeight
 
 function toFloatString(value) {
   return Number.isInteger(value) ? `${value}.0` : `${value}`;

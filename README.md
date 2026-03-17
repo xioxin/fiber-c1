@@ -81,9 +81,6 @@ fiber-c1/
     ├── SettingsPanel.jsx # Settings window (language, theme, display-info choice)
     ├── i18n/index.js     # English / Chinese strings and units
     │
-    ├── lenticular/
-    │   └── config.js     # ← Display constants and default grating parameters
-    │
     └── components/
         ├── LenticularInterlacer.jsx  # ← Core lenticular render + interlace pass
         ├── DonutProgress.jsx         # Animated ring showing the metric value
