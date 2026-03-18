@@ -1,5 +1,6 @@
 {
   "name": "fiber-c1",
+  "productName": "DonutMonitor",
   "private": true,
   "version": "1.0.2",
   "type": "module",
@@ -56,14 +57,18 @@
       "icon": "electron/assets/icon.ico"
     },
     "nsis": {
-      "include": "installer.nsi",
+      "include": "installer.nsh",
       "installerIcon": "electron/assets/icon.ico",
       "uninstallerIcon": "electron/assets/uninstall.ico",
       "shortcutName": "DonutMonitor",
       "uninstallDisplayName": "DonutMonitor",
       "multiLanguageInstaller": true,
       "displayLanguageSelector": true,
-      "installerLanguages": ["en_US", "zh_CN"]
+      "installerLanguages": ["en_US", "zh_CN"],
+      "deleteAppDataOnUninstall": true,
+      "warningsAsErrors": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "mac": {
       "target": "dmg"
